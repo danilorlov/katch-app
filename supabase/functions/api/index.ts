@@ -10,7 +10,22 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const MIN_PAYOUT = Number(Deno.env.get("MIN_PAYOUT") ?? "10");
 const MAX_AUTH_AGE = 60 * 60 * 24; // дані входу Telegram дійсні 24 години
 
-const db = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
+// Серверний ключ: у старих проєктах SUPABASE_SERVICE_ROLE_KEY, у нових — секретний ключ із SUPABASE_SECRET_KEYS.
+function serverKey(): string {
+  const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (legacy) return legacy;
+  const single = Deno.env.get("SUPABASE_SECRET_KEY");
+  if (single) return single;
+  try {
+    const all = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+    const first = Object.values(all)[0];
+    if (typeof first === "string") return first;
+  } catch { /* ignore */ }
+  console.error("No server key found in env");
+  return "";
+}
+
+const db = createClient(SUPABASE_URL, serverKey(), {
   auth: { persistSession: false },
 });
 

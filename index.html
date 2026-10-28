@@ -693,6 +693,17 @@ function logoMark(size) {
     '<path d="M15 24 L40 41" stroke="#c6ff3d" stroke-width="' + (small ? 15 : 13) + '"/>' +
     (small ? '<rect x="2" y="1" width="13" height="46" fill="#fafafa"/>' : '<rect x="4" y="3" width="11" height="42" fill="#fafafa"/>') + '</svg>';
 }
+function tgPhoto() {
+  try { const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user; return (u && u.photo_url) || ''; } catch (e) { return ''; }
+}
+function avatar(size, name) {
+  const url = tgPhoto();
+  const letter = esc(((name || 'K')[0] || 'K').toUpperCase());
+  const box = 'width:' + size + 'px;height:' + size + 'px;border-radius:999px;flex-shrink:0;overflow:hidden;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted);font-size:' + Math.round(size * 0.4) + 'px';
+  return '<span style="' + box + '">' + (url
+    ? '<img src="' + esc(url) + '" alt="" width="' + size + '" height="' + size + '" style="width:100%;height:100%;object-fit:cover" referrerpolicy="no-referrer" onerror="this.remove()">'
+    : letter) + (url ? '' : '') + '</span>';
+}
 const wordmark = (px) => '<span style="font-size:' + px + 'px;font-weight:800;letter-spacing:-0.04em;line-height:1">Katch</span>';
 const ic = (d) => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
 const icons = {
@@ -714,7 +725,7 @@ function top(titleText) {
     : '<button class="brandmark" data-a="home" aria-label="Katch">' + logoMark(28) + wordmark(20) + '</button>';
   return '<div class="top">' + left +
     '<div class="pillgroup"><button class="lang" data-a="lang" aria-label="Language">' + (S.lang === 'uk' ? 'UA' : 'EN') + '</button>' +
-    '<button data-a="go" data-v="profile" aria-label="' + esc(t('navProfile')) + '" style="width:40px">' + icons.profile.replace('<svg', '<svg width="20" height="20"') + '</button></div></div>' +
+    '<button data-a="go" data-v="profile" aria-label="' + esc(t('navProfile')) + '" style="width:40px;padding:0">' + (tgPhoto() ? avatar(30, (S.user && S.user.first_name) || '') : icons.profile.replace('<svg', '<svg width="20" height="20"')) + '</button></div></div>' +
     (DEMO ? '<div class="demo">' + esc(t('demo')) + '</div>' : '');
 }
 function tabs(active) {
@@ -774,7 +785,7 @@ const screens = {
     const name = u.first_name || u.username || '';
     return top() + '<div class="content" style="min-height:calc(var(--tg-viewport-stable-height,100dvh) - 72px - var(--safe-top) - var(--safe-bottom))">' +
       '<div class="card tight" style="flex-direction:row;align-items:center">' +
-        '<div style="width:44px;height:44px;border-radius:999px;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted)">' + esc((name[0] || 'K').toUpperCase()) + '</div>' +
+        avatar(44, name) +
         '<div class="col" style="flex:1"><span style="font-weight:600">' + esc(t('hello', { name: name })) + '</span><span class="mono small muted">' + (u.username ? '@' + esc(u.username) + ' · ' : '') + esc(t('viaTg')) + '</span></div></div>' +
       '<div class="col" style="gap:14px;margin-top:20px"><span class="label lime">' + esc(t('eyebrow')) + '</span>' +
         '<h1 class="hero" style="white-space:pre-line">' + esc(t('heroTitle')) + '</h1>' +
@@ -904,7 +915,10 @@ const screens = {
   profile: () => {
     const u = S.user || {};
     const w = S.data.ready ? S.data : {};
+    const pname = u.first_name || u.username || 'Katch';
     return top() + '<div class="content">' +
+      '<div class="row" style="align-items:center;justify-content:flex-start;gap:14px">' + avatar(60, pname) +
+        '<div class="col"><span style="font-size:20px;font-weight:700;letter-spacing:-.02em">' + esc(pname) + '</span><span class="mono small muted">' + (u.username ? '@' + esc(u.username) + ' · ' : '') + esc(t('viaTg')) + '</span></div></div>' +
       '<div class="cardwrap"><div class="bankcard" id="bankcard"><span class="bc-lines"></span><span class="bc-glow"></span><span class="wm">' + logoMark(190) + '</span>' +
         '<div class="bc-top"><span class="bc-brand">' + logoMark(24) + wordmark(17) + '</span><span class="bc-right"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8.5 8.5a5 5 0 0 1 0 7"/><path d="M12 6a8.5 8.5 0 0 1 0 12"/><path d="M15.5 3.5a12 12 0 0 1 0 17"/></svg><span class="bc-role">CLIPPER</span></span></div>' +
         '<span class="bc-chip" aria-hidden="true"></span>' +

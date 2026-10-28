@@ -11,6 +11,8 @@
 <style>
 /* Layout: app shell — header, scrolling cards, floating pill nav. Dark only (Telegram look). */
 :root{
+  --safe-top:max(env(safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)));
+  --safe-bottom:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px));
   --bg:#0b0b0c;--card:#141416;--card2:#1c1c1f;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);
   --ink:#f4f4f5;--muted:#9c9ca3;--faint:#6b6b72;
   --signal:#c6ff3d;--signal-dim:rgba(198,255,61,.12);--signal-line:rgba(198,255,61,.42);--signal-held:#6b8020;--void:#ff5c4d;
@@ -33,7 +35,7 @@ a{color:inherit}
 .app{min-height:var(--tg-viewport-stable-height,100dvh);display:flex;flex-direction:column;max-width:520px;margin:0 auto}
 
 /* Header */
-.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;background:linear-gradient(var(--bg) 70%,rgba(11,11,12,0))}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(12px + var(--safe-top)) 16px 12px;background:linear-gradient(var(--bg) 70%,rgba(11,11,12,0))}
 .brandmark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:17px;background:none;border:0;padding:0;cursor:pointer}
 .pillgroup{display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
 .pillgroup button{height:36px;min-width:40px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -44,7 +46,8 @@ a{color:inherit}
 .demo{margin:0 16px;padding:8px 12px;border-radius:var(--r-sm);background:var(--card);border:1px dashed var(--line2);font-size:12px;color:var(--muted);text-align:center}
 
 .content{flex:1;display:flex;flex-direction:column;gap:14px;padding:8px 16px 28px}
-.has-tabs .content{padding-bottom:128px}
+.has-tabs .content{padding-bottom:calc(128px + var(--safe-bottom))}
+.content{padding-bottom:calc(28px + var(--safe-bottom))}
 h1{margin:0;font-size:28px;line-height:32px;font-weight:700;letter-spacing:-.03em;text-wrap:balance}
 h1.hero{font-size:40px;line-height:42px;font-weight:700;letter-spacing:-.045em}
 .hl{color:var(--signal);text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
@@ -181,7 +184,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:999px;b
 .checks li::before{content:"";flex-shrink:0;width:18px;height:18px;margin-top:1px;border-radius:6px;background:var(--signal-dim);border:1px solid var(--signal-line)}
 
 /* Floating nav */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;max-width:520px;margin:0 auto;display:flex;gap:10px;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;max-width:520px;margin:0 auto;display:flex;gap:10px;padding:0 12px calc(12px + var(--safe-bottom));pointer-events:none}
 .tabs .pill{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:6px;border-radius:999px;background:rgba(24,24,27,.88);border:1px solid var(--line2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);pointer-events:auto}
 .tabs button{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;border-radius:999px;background:transparent;color:var(--muted);font-size:11px;font-weight:500;cursor:pointer}
 .tabs button.on{color:var(--signal);background:rgba(255,255,255,.07)}
@@ -600,11 +603,24 @@ class DemoApi {
 const api = DEMO ? new DemoApi() : new HttpApi();
 
 // ================= НАВІГАЦІЯ =================
-// Перший екран — вибір ролі (кліпер чи бренд). З будь-якого екрана «Назад» веде аж до нього.
+// Навігація як у звичайному застосунку:
+// • вибір ролі — корінь;
+// • вкладки (Головна, Оффери, Кабінет, Профіль) — один рівень під ним: «Назад» з будь-якої вкладки веде на вибір ролі,
+//   а перемикання вкладок не накопичує історію;
+// • деталі (оффер, вивід коштів, сторінка бренду) відкриваються поверх і «Назад» повертає туди, звідки прийшов.
+const TABS = ['home', 'feed', 'cabinet', 'profile'];
 function go(screen, p) {
-  if (S.screen && S.screen !== 'loading' && S.screen !== 'fatal') {
-    S.stack.push({ screen: S.screen, p: S.p });
-    if (S.stack.length > 40) S.stack.shift();
+  if (TABS.includes(screen)) {
+    S.stack = [{ screen: 'start', p: {} }];
+  } else if (S.screen && S.screen !== 'loading' && S.screen !== 'fatal') {
+    const top = S.stack[S.stack.length - 1];
+    // той самий екран двічі поспіль не кладемо
+    if (!(S.screen === screen && JSON.stringify(S.p) === JSON.stringify(p || {}))) S.stack.push({ screen: S.screen, p: S.p });
+    // якщо повертаємось на екран, що вже є в історії, обрізаємо історію до нього
+    const i = S.stack.findIndex((x) => x.screen === screen && JSON.stringify(x.p) === JSON.stringify(p || {}));
+    if (i >= 0) S.stack = S.stack.slice(0, i);
+    if (S.stack.length > 10) S.stack = S.stack.slice(-10);
+    void top;
   }
   S.screen = screen; S.p = p || {}; S.err = ''; S.data = {};
   try { window.scrollTo(0, 0); } catch (e) {}
@@ -756,7 +772,7 @@ const screens = {
   start: () => {
     const u = S.user || {};
     const name = u.first_name || u.username || '';
-    return top() + '<div class="content" style="min-height:calc(var(--tg-viewport-stable-height,100dvh) - 72px)">' +
+    return top() + '<div class="content" style="min-height:calc(var(--tg-viewport-stable-height,100dvh) - 72px - var(--safe-top) - var(--safe-bottom))">' +
       '<div class="card tight" style="flex-direction:row;align-items:center">' +
         '<div style="width:44px;height:44px;border-radius:999px;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted)">' + esc((name[0] || 'K').toUpperCase()) + '</div>' +
         '<div class="col" style="flex:1"><span style="font-weight:600">' + esc(t('hello', { name: name })) + '</span><span class="mono small muted">' + (u.username ? '@' + esc(u.username) + ' · ' : '') + esc(t('viaTg')) + '</span></div></div>' +

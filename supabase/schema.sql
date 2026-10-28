@@ -150,3 +150,11 @@ where p.status = 'requested'
 order by p.created_at;
 
 revoke all on review_queue, campaign_report, payouts_todo from anon, authenticated;
+
+-- Права для серверної функції (service_role). Потрібні, якщо в проєкті вимкнено
+-- «Automatically expose new tables». Публічний ключ (anon) доступу не має.
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;

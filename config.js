@@ -3,7 +3,7 @@
 window.KATCH_CONFIG = {
   // Адреса серверної функції Supabase. Порожньо = демо-режим (дані вигадані й не зберігаються).
   // Приклад: 'https://abcd1234.supabase.co/functions/v1/api'
-  API_URL: '',
+  API_URL: 'https://ervjsysouadjqdecmuyw.supabase.co/functions/v1/api',
 
   // Telegram-нік (без @), куди бренди пишуть бриф і куди веде «Підтримка»
   MANAGER: 'katch_team',

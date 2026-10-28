@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Katch</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+/* Layout: app shell — header, scrolling cards, floating pill nav. Dark only (Telegram look). */
+:root{
+  --bg:#0b0b0c;--card:#141416;--card2:#1c1c1f;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);
+  --ink:#f4f4f5;--muted:#9c9ca3;--faint:#6b6b72;
+  --signal:#c6ff3d;--signal-dim:rgba(198,255,61,.12);--signal-line:rgba(198,255,61,.42);--signal-held:#6b8020;--void:#ff5c4d;
+  --sans:"Onest",system-ui,-apple-system,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  --r-lg:22px;--r:16px;--r-sm:12px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
+button,input,textarea{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.label{font:500 11px/16px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.label.lime{color:var(--signal)}
+.muted{color:var(--muted)}
+.small{font-size:13px;line-height:19px}
+.lime{color:var(--signal)}
+.app{min-height:var(--tg-viewport-stable-height,100dvh);display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+
+/* Header */
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;background:linear-gradient(var(--bg) 70%,rgba(11,11,12,0))}
+.brandmark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:17px;background:none;border:0;padding:0;cursor:pointer}
+.pillgroup{display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.pillgroup button{height:36px;min-width:40px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pillgroup .lang{font:500 12px var(--mono);color:var(--muted)}
+.backpill{height:40px;padding:0 14px 0 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.pagehead{display:flex;align-items:center;gap:10px;min-width:0}
+.pagehead h2{margin:0;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo{margin:0 16px;padding:8px 12px;border-radius:var(--r-sm);background:var(--card);border:1px dashed var(--line2);font-size:12px;color:var(--muted);text-align:center}
+
+.content{flex:1;display:flex;flex-direction:column;gap:14px;padding:8px 16px 28px}
+.has-tabs .content{padding-bottom:128px}
+h1{margin:0;font-size:28px;line-height:32px;font-weight:700;letter-spacing:-.03em;text-wrap:balance}
+h1.hero{font-size:40px;line-height:42px;font-weight:700;letter-spacing:-.045em}
+.hl{color:var(--signal);text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
+p{margin:0}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:12px}
+.card.glow{border-color:var(--signal-line);background:radial-gradient(120% 90% at 100% 0%,rgba(198,255,61,.09),rgba(198,255,61,0) 55%),var(--card);padding:24px 20px;gap:16px}
+.card.tight{padding:14px}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;padding:0 18px;border-radius:var(--r);border:1px solid var(--line2);background:transparent;color:var(--ink);font-weight:600;font-size:16px;text-decoration:none;cursor:pointer;width:100%}
+.btn.ask{background:var(--signal);border-color:var(--signal);color:#0b0b0c;font-weight:700}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#0b0b0c;font-weight:700}
+.btn.limeline{border-color:var(--signal-line);background:var(--signal-dim);color:var(--signal);width:auto;align-self:flex-start}
+.btn.bid{border-color:var(--ink)}
+.btn.sm{min-height:42px;width:auto;font-size:13px;padding:0 14px;border-radius:var(--r-sm)}
+.btn.split{justify-content:space-between}
+.btn[disabled]{opacity:.45;cursor:default}
+
+.input{width:100%;height:50px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--line2);background:var(--card2);color:var(--ink);font-size:15px;outline:none}
+.input:focus{border-color:var(--signal-line)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer}
+.chip.on{background:var(--signal);border-color:var(--signal);color:#0b0b0c}
+.codebox{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:54px;padding:6px 6px 6px 14px;background:var(--card2);border:1px solid var(--line);border-radius:var(--r-sm)}
+.codebox .v{font-family:var(--mono);font-size:17px;font-weight:500;word-break:break-all}
+.codebox .v.big{font-size:20px}
+.money{font-family:var(--mono);font-weight:500;padding:2px 8px;border-radius:8px;background:var(--signal);color:#0b0b0c;display:inline-block}
+.money.held{background:var(--signal-dim);color:var(--ink)}
+.track{height:6px;border-radius:999px;background:var(--card2);overflow:hidden;display:flex}
+.track i{display:block;height:100%;background:var(--signal)}
+.track i.held{background:var(--signal-held)}
+.offer{display:flex;flex-direction:column;gap:12px;padding:18px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);text-align:left;width:100%;cursor:pointer}
+.offer:hover{border-color:var(--line2)}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.col{display:flex;flex-direction:column;gap:4px;min-width:0}
+.title{font-size:16px;font-weight:600}
+.tag{font:500 11px var(--mono);padding:3px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.grid2>div{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.fig{font:500 20px var(--mono);font-variant-numeric:tabular-nums}
+.unit{font:400 11px var(--mono);color:var(--muted);text-transform:uppercase}
+ul.rules{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:20px}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
+.item{display:flex;gap:12px;align-items:center;padding:13px 14px;background:transparent;border:0;border-top:1px solid var(--line);text-align:left;width:100%}
+.item:first-child{border-top:0}
+.dot{width:8px;height:8px;border-radius:999px;flex-shrink:0}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.status.bad{color:var(--void)}
+.err{color:var(--void);font-size:13px}
+.ok{font-size:13px;color:var(--signal)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stats>div{padding:12px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.stats .fig{font-size:17px}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:12px;align-items:center;border:1px dashed var(--line2);border-radius:var(--r-lg)}
+.radio{display:flex;align-items:center;gap:12px;padding:15px 16px;border-top:1px solid var(--line);cursor:pointer}
+.radio:first-child{border-top:0}
+.radio.on{background:var(--card2)}
+.radio input{accent-color:var(--signal);width:18px;height:18px;margin:0}
+.timeline{display:flex;flex-direction:column;font-size:13px;line-height:19px;color:var(--muted)}
+.timeline div{display:flex;gap:10px;padding:4px 0}
+.timeline b{font-family:var(--mono);font-weight:500;color:var(--signal);min-width:18px}
+.spin{padding:48px 16px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:16px;right:16px;bottom:104px;z-index:9;max-width:488px;margin:0 auto;padding:12px 14px;border-radius:var(--r);background:var(--card2);border:1px solid var(--line2);font-size:14px;text-align:center}
+
+/* Ticker of plain facts */
+.ticker{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -16px;padding:10px 0;white-space:nowrap}
+.ticker .run{display:inline-flex;gap:28px;padding-left:16px;animation:tick 26s linear infinite;font:500 12px var(--mono);color:var(--signal)}
+.ticker .run span::after{content:"✦";color:#ff8a3d;margin-left:28px;font-size:10px}
+@keyframes tick{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker .run{animation:none}}
+
+/* Calculator */
+.calc-out{display:flex;align-items:baseline;gap:8px}
+.calc-out .cur{font:700 22px var(--mono);color:var(--signal)}
+.calc-out .big{font:600 44px/1 var(--mono);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.calc-out .per{font:400 12px var(--mono);color:var(--muted);text-transform:uppercase}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:4px 0;cursor:pointer;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:999px;background:linear-gradient(to right,var(--signal) var(--p),#2a2a2e var(--p))}
+input[type=range]::-moz-range-track{height:4px;border-radius:999px;background:linear-gradient(to right,var(--signal) var(--p),#2a2a2e var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:999px;background:var(--signal);border:5px solid #1b2a06;margin-top:-10px;box-shadow:0 0 0 2px var(--signal)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:999px;background:var(--signal);border:4px solid #1b2a06;box-shadow:0 0 0 2px var(--signal)}
+.scale{display:flex;justify-content:space-between;font:400 12px var(--mono);color:var(--faint);text-transform:uppercase}
+
+/* Profile: bank card */
+.link-btn{background:none;border:0;padding:8px 4px;color:var(--muted);cursor:pointer;font:inherit}
+.cardwrap{perspective:900px}
+.bankcard{position:relative;overflow:hidden;aspect-ratio:1.586/1;max-width:100%;border-radius:20px;padding:20px 22px;display:flex;flex-direction:column;justify-content:space-between;
+  background:radial-gradient(120% 100% at 0% 0%,#303036 0%,#17171a 52%,#0f0f11 100%);border:1px solid rgba(255,255,255,.14);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 28px 50px -28px rgba(198,255,61,.35);transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .2s ease-out;transform-style:preserve-3d}
+.bankcard>*{position:relative;z-index:1}
+.bankcard .bc-lines{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.022) 0 2px,transparent 2px 8px)}
+.bankcard .bc-glow{position:absolute;z-index:0;right:-25%;bottom:-45%;width:85%;height:95%;border-radius:50%;background:radial-gradient(closest-side,rgba(198,255,61,.22),rgba(198,255,61,0))}
+.bankcard .wm{position:absolute;z-index:0;right:-18px;bottom:-30px;opacity:.14;line-height:0;pointer-events:none}
+.bankcard::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.09) 48%,transparent 60%);transform:translateX(-120%);animation:sheen 2.4s ease-out .3s 1 forwards}
+@keyframes sheen{to{transform:translateX(120%)}}
+@media (prefers-reduced-motion:reduce){.bankcard::after{animation:none;display:none}.bankcard{transform:none}}
+.bc-top{display:flex;align-items:center;justify-content:space-between}
+.bc-brand{display:flex;align-items:center;gap:8px}
+.bc-right{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.7)}
+.bc-role{font:500 10px var(--mono);letter-spacing:.14em;padding:5px 8px;border-radius:6px;border:1px solid var(--signal-line);color:var(--signal);background:rgba(198,255,61,.06)}
+.bc-chip{width:46px;height:35px;border-radius:7px;background:linear-gradient(135deg,#efdb9a 0%,#c9a752 45%,#a07f33 100%);position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.bc-chip::before{content:"";position:absolute;inset:7px 0;border-top:1px solid rgba(0,0,0,.22);border-bottom:1px solid rgba(0,0,0,.22)}
+.bc-chip::after{content:"";position:absolute;inset:0 15px;border-left:1px solid rgba(0,0,0,.22);border-right:1px solid rgba(0,0,0,.22)}
+.bc-num{font:500 18px var(--mono);letter-spacing:.16em;color:#e9e9ec;text-shadow:0 1px 0 rgba(0,0,0,.6);white-space:nowrap}
+.bc-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.bc-k{font:500 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.bc-name{font:500 14px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#f1f1f3;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bc-bal{font:600 26px/1.05 var(--mono);color:var(--signal);font-variant-numeric:tabular-nums}
+@media (max-width:360px){.bc-num{font-size:15px}.bc-bal{font-size:22px}}
+.menu{display:flex;flex-direction:column;gap:10px}
+.menu-item{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--card);text-align:left;width:100%;cursor:pointer}
+.menu-item .ic{width:46px;height:46px;flex-shrink:0;border-radius:14px;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--signal)}
+.menu-item .ic svg{width:20px;height:20px}
+.menu-item .tx{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.menu-item .tx b{font-size:16px;font-weight:600}
+.menu-item .tx span{font-size:13px;color:var(--muted)}
+.menu-item .chev{color:var(--muted);font-size:20px}
+.menu-item.accent{border-color:var(--signal-line)}
+.menu-item.accent .tx b{color:var(--signal)}
+.menu-item.hot{border-color:rgba(255,138,61,.45);background:linear-gradient(120deg,rgba(255,138,61,.22),rgba(255,138,61,.04)),var(--card)}
+.menu-item.hot .ic{color:#ff8a3d}
+
+/* Report sample */
+.rtable{width:100%;border-collapse:collapse;font:400 12px var(--mono);font-variant-numeric:tabular-nums}
+.rtable th{font-weight:500;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);text-transform:uppercase;font-size:10px;letter-spacing:.08em}
+.rtable td{padding:9px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rtable .r{text-align:right}
+.rtable tfoot td{border-bottom:0;font-weight:600;color:var(--ink)}
+.scrollx{overflow-x:auto;margin:0 -4px}
+.checks{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;font-size:14px;line-height:20px}
+.checks li{display:flex;gap:10px}
+.checks li::before{content:"";flex-shrink:0;width:18px;height:18px;margin-top:1px;border-radius:6px;background:var(--signal-dim);border:1px solid var(--signal-line)}
+
+/* Floating nav */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;max-width:520px;margin:0 auto;display:flex;gap:10px;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+.tabs .pill{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:6px;border-radius:999px;background:rgba(24,24,27,.88);border:1px solid var(--line2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);pointer-events:auto}
+.tabs button{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;border-radius:999px;background:transparent;color:var(--muted);font-size:11px;font-weight:500;cursor:pointer}
+.tabs button.on{color:var(--signal);background:rgba(255,255,255,.07)}
+.tabs svg{width:20px;height:20px}
+.tabs .circle{width:68px;height:68px;flex-shrink:0;border-radius:999px;background:rgba(24,24,27,.88);border:1px solid var(--line2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);pointer-events:auto}
+.tabs .circle.on{border-color:var(--signal-line);background:rgba(24,24,27,.88)}
+</style>
+</head>
+<body>
+<div id="app" class="app"><div class="spin">…</div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function () {
+'use strict';
+
+// ================= ТЕКСТИ (UA / EN) =================
+const T = {
+  uk: {
+    demo: 'Демо-режим: дані вигадані й не зберігаються',
+    cancelOffer: 'Скасувати оффер', cancelQ: 'Скасувати цей оффер?',
+    cancelWarn: 'Кліпи за ним не будуть оплачені, навіть ті, що вже зараховані або в холді. Те, що вже пішло на виплату, залишається твоїм.',
+    archive: 'Скасовані оффери', cancelYes: 'Так, скасувати', cancelNo: 'Ні, залишити', cancelled: 'Оффер скасовано',
+    cardHolder: 'Власник', cardPaid: 'Виплачено всього',
+    navHome: 'Головна', navProfile: 'Профіль',
+    homeEyebrow: 'Katch — біржа уваги', heroA: 'Перетвори перегляди на ', heroB: 'долари',
+    homeSub: 'Нарізай відео, публікуй у соцмережах і отримуй оплату за перегляди.', startWork: 'Почати заробляти',
+    tk1: 'Оплата за перегляди', tk2: 'Вивід на USDT або картку', tk3: 'Перегляди рахуємо на 7-й день', tk4: 'Вхід через Telegram, без реєстрації',
+    calcA: 'Скільки заробиш за ', calcB: ' переглядів', calcAria: 'Кількість переглядів',
+    calcNoteA: 'За ставкою ', calcNoteB: ' за 1 000 переглядів — середня по активних офферах',
+    topOffers: 'Зараз у стрічці', allOffers: 'Усі оффери', brandMenuSub: 'Розмістити оффер і отримати перегляди',
+    tgProfile: 'Telegram-профіль', mWithdraw: 'Вивести кошти', mWithdrawSub: 'USDT · TON або банківська картка',
+    mCabinetSub: 'Взяті оффери, кліпи і статуси', mSupport: 'Підтримка', mSupportSub: 'Написати менеджеру в Telegram', mLang: 'Мова',
+    supportMsg: 'Привіт! У мене питання щодо Katch:',
+    brandEyebrow2: 'Katch для брендів', brandHeroA: 'Покажемо твій бренд у ', brandHeroB: 'TikTok, Reels і Shorts',
+    brandHeroSub: 'Кліпери нарізають твої відео й публікують у себе. Ти платиш лише за перегляди, які ми зарахували.',
+    writeBrief: 'Написати бриф',
+    btk1: 'Оплата лише за зараховані перегляди', btk2: 'Перегляди рахуємо на 7-й день', btk3: 'Звіт із посиланням на кожен кліп', btk4: 'Стоп-лист і правила — твої',
+    bCalcA: 'Скільки переглядів отримаєш за ', viewsWord: 'переглядів', budget: 'Бюджет',
+    bCalcNoteA: 'Приклад за ставкою ', bCalcNoteB: ' за 1 000 переглядів. Точну ставку погоджуємо в брифі.',
+    briefNeedTitle: 'Що потрібно для брифу',
+    bn1: 'Що просуваємо і куди вести людей', bn2: 'Вихідники: стрім, подкаст, кліп, трек', bn3: 'Бюджет кампанії', bn4: 'Платформи: TikTok, Reels, Shorts', bn5: 'Стоп-лист: теми і слова, яких не можна', bn6: 'Дедлайн кампанії',
+    howTitle: 'Як це працює', reportTitle: 'Як виглядає звіт', reportSample: 'Приклад',
+    rcClip: 'Кліп', rcViews: 'Перегляди', rcSum: 'Сума', rcTotal: 'Разом',
+    reportNote: 'Звіт надсилаємо в чат: посилання на кожен кліп, перегляди на 7-й день після публікації і скільки списано з бюджету. Платиш лише за зараховані перегляди.',
+    briefTpl: 'Привіт! Хочу розмістити оффер у Katch.\n\nБренд:\nЩо просуваємо:\nКуди вести людей (посилання):\nВихідники:\nБюджет:\nПлатформи:\nСтоп-лист:\nДедлайн:',
+    tabCabinet: 'Кабінет', brief: 'Що треба зробити', requirements: 'Вимоги', source: 'Вихідники',
+    openSource: 'Відкрити вихідники', sourceLater: 'Вихідники надішле менеджер у Telegram.',
+    takenTitle: 'Оффер взято — він у твоєму кабінеті', captionLabel: 'Підпис до кожного кліпу',
+    captionNote: 'Встав цей текст у підпис кожного кліпу за цим оффером. Без нього кліп не зарахуємо: так ми бачимо, що кліп твій.',
+    openCabinet: 'Відкрити кабінет', takenToast: 'Оффер додано в кабінет', viewBrief: 'Переглянути ТЗ',
+    pasteLabel: 'Опублікував? Встав посилання на кліпи', pastePh: 'Кожне посилання з нового рядка',
+    addClips: 'Надіслати на перевірку', addedN: 'Надіслано кліпів: {n}. Статус — на перевірці.',
+    earned: 'Зароблено', howPay: 'Як рахуємо гроші',
+    noTakes: 'Тут будуть оффери, які ти візьмеш. Відкрий оффер, прочитай ТЗ і натисни «Взяти».',
+    back: 'Назад', loading: 'Завантаження…',
+    hello: 'Привіт, {name}', viaTg: 'вхід через Telegram',
+    eyebrow: 'Біржа уваги',
+    heroTitle: 'Нарізай кліпи.\nОтримуй гроші\nза перегляди.',
+    heroSub: 'Бери оффер, публікуй кліп зі своїм кодом Katch, додавай посилання. Ми рахуємо перегляди й платимо.',
+    imClipper: 'Я кліпер', imBrand: 'Я бренд',
+    noSignup: 'Без реєстрації. Твій Telegram — це твій вхід.',
+    connect: 'Акаунт', connectTitle: 'Де ти публікуєш?',
+    connectSub: 'Потрібен лише нік. Жодних паролів і доступу до акаунта.',
+    platform: 'Платформа', handle: 'Твій нік', addAccount: 'Додати акаунт',
+    proveTitle: 'Підтверди, що акаунт твій',
+    yourAccounts: 'Твої акаунти', addMore: 'Додати ще акаунт', toOffers: 'До офферів',
+    acc_pending: 'на перевірці', acc_verified: 'підтверджено', acc_rejected: 'відхилено',
+    copy: 'Копіювати', copied: 'Скопійовано',
+    tabOffers: 'Оффери', tabClips: 'Мої кліпи', tabWallet: 'Гаманець',
+    cat_all: 'Усі', cat_streams: 'Стріми', cat_podcasts: 'Подкасти', cat_music: 'Музика', cat_gaming: 'Ґеймінг', cat_other: 'Інше',
+    activeOffers: 'Активні оффери · {n}', noOffers: 'Зараз немає активних офферів у цій категорії.',
+    per1k: 'за 1000 переглядів', leftOf: 'залишилось {left} з {budget}', taken: 'Взято',
+    offer: 'Оффер', rate: 'Ставка', budgetLeft: 'Залишок бюджету', countedOn: 'Рахуємо перегляди',
+    day7: '7-й день', afterPost: 'після публікації', maxPerClip: 'Максимум за кліп', noLimit: 'без ліміту',
+    platforms: 'Платформи', rules: 'Правила',
+    take: 'Взяти оффер', openTaken: 'Ти вже взяв цей оффер — відкрити',
+    nextTitle: 'Що робити далі',
+    s1: 'Завантаж вихідники', s1b: 'Відкрити папку з вихідниками', s1none: 'Вихідники надішле менеджер у Telegram.',
+    s2: 'Наріж вертикальні кліпи', s2b: '15–60 секунд, лише з цих вихідників. Можна скільки завгодно кліпів.',
+    s3: 'Опублікуй з цим у підписі', s3b: 'Код обовʼязковий. Без коду кліп не зарахуємо — так ми бачимо, що кліп твій.',
+    yourLink: 'Твоє унікальне посилання', linkNote: 'Постав у біо або опис, поки йде кампанія. Переходи бачить бренд.', clicks: 'переходів: {n}',
+    s4: 'Опубліковано? Встав посилання на ролик', linkPh: 'https://www.tiktok.com/@нік/video/…',
+    submit: 'Надіслати на перевірку', sent: 'Надіслано. Статус: на перевірці.',
+    s5: 'Що буде далі',
+    t1: 'Кліп «на перевірці»', t2: 'На 7-й день після публікації рахуємо перегляди', t3: 'Ще 7 днів холду на випадок спорів', t4: 'Гроші в гаманці — виводиш на USDT або картку',
+    clipsForOffer: 'Твої кліпи за цим оффером',
+    st_review: 'На перевірці · день {d} з 7', st_review_due: 'На перевірці · рахуємо перегляди',
+    st_hold: 'Зараховано · холд до {date}', st_avail: 'Зараховано · можна вивести', st_out: 'Виплата в дорозі', st_paid: 'Виплачено', st_rejected: 'Відхилено',
+    views: '{n} переглядів',
+    myOffers: 'Взяті оффери', myClips: 'Кліпи', noClips: 'Кліпів поки немає. Взяв оффер? Додай посилання на ролик.',
+    nClips: 'кліпів: {n}',
+    sOnReview: 'На перевірці', sHold: 'У холді', sPaid: 'Виплачено',
+    available: 'Доступно', inHold: 'У холді', requested: 'Запитано',
+    payTo: 'Куди виплатити', usdt: 'USDT · гаманець TON', card: 'Банківська картка',
+    addrUsdt: 'Адреса гаманця TON', addrCard: 'Номер картки',
+    holdNote: 'Перегляди рахуємо на 7-й день після публікації, далі 7 днів холду на випадок спорів.',
+    withdraw: 'Вивести {amount}', belowMin: 'Мінімум для виводу — {min}',
+    payoutDone: 'Запит на виплату надіслано.',
+    history: 'Виплати', ps_requested: 'запит надіслано', ps_sent: 'надіслано', ps_failed: 'помилка',
+    inHoldList: 'Ще в холді',
+    brand: 'Для брендів', brandEyebrow: 'Сторона попиту',
+    brandTitle: 'Твої відео, нарізані й побачені. Платиш лише за зараховані перегляди.',
+    b1: 'Напиши нам', b1t: 'Розкажи, що хочеш просувати.',
+    b2: 'Короткий бриф у чаті', b2t: 'Ставка, бюджет, платформи, правила, стоп-лист.',
+    b3: 'Оффер запускається', b3t: 'Кліпери публікують зі своїх акаунтів. Перегляди рахуємо на 7-й день після публікації.',
+    b4: 'Звіт і оплата за факт', b4t: 'Кожен кліп, перегляди на 7-й день і скільки списано.',
+    placeOffer: 'Розмістити оффер', opensChat: 'Відкриє чат з @{m}',
+    brandMsg: 'Привіт! Хочу розмістити оффер у Katch.',
+    e_bad_url: 'Це не схоже на посилання TikTok, Instagram чи YouTube.',
+    e_duplicate_clip: 'Цей кліп уже надіслано.',
+    e_platform_not_allowed: 'Ця платформа не підходить для цього офферу.',
+    e_offer_closed: 'Оффер уже закрито.',
+    e_bad_handle: 'Перевір нік: лише латиниця, цифри, крапка, _ і -.',
+    e_handle_taken: 'Цей акаунт уже привʼязав інший користувач.',
+    e_below_min: 'Сума менша за мінімальну для виводу.',
+    e_bad_payout_details: 'Перевір реквізити.',
+    e_unauthorized: 'Відкрий апку через бота в Telegram.',
+    e_network: 'Немає звʼязку. Спробуй ще раз.',
+    e_server_error: 'Щось пішло не так. Спробуй ще раз.'
+  },
+  en: {
+    demo: 'Demo mode: sample data, nothing is saved',
+    cancelOffer: 'Cancel offer', cancelQ: 'Cancel this offer?',
+    cancelWarn: "Clips for it won't be paid, including ones already counted or in hold. Anything already sent for payout stays yours.",
+    archive: 'Cancelled offers', cancelYes: 'Yes, cancel', cancelNo: 'No, keep it', cancelled: 'Offer cancelled',
+    cardHolder: 'Holder', cardPaid: 'Paid out in total',
+    navHome: 'Home', navProfile: 'Profile',
+    homeEyebrow: 'Katch — the attention exchange', heroA: 'Turn views into ', heroB: 'dollars',
+    homeSub: 'Cut videos, post them on social media and get paid for the views.', startWork: 'Start earning',
+    tk1: 'Paid per view', tk2: 'Withdraw to USDT or card', tk3: 'Views counted on day 7', tk4: 'Telegram login, no sign-up',
+    calcA: 'What you earn for ', calcB: ' views', calcAria: 'Number of views',
+    calcNoteA: 'At ', calcNoteB: ' per 1,000 views — the average across open offers',
+    topOffers: 'In the feed now', allOffers: 'All offers', brandMenuSub: 'Place an offer and get views',
+    tgProfile: 'Telegram profile', mWithdraw: 'Withdraw', mWithdrawSub: 'USDT · TON or bank card',
+    mCabinetSub: 'Taken offers, clips and statuses', mSupport: 'Support', mSupportSub: 'Message the manager in Telegram', mLang: 'Language',
+    supportMsg: 'Hi! I have a question about Katch:',
+    brandEyebrow2: 'Katch for brands', brandHeroA: 'We put your brand on ', brandHeroB: 'TikTok, Reels and Shorts',
+    brandHeroSub: 'Clippers cut your videos and post them on their accounts. You pay only for the views we count.',
+    writeBrief: 'Send a brief',
+    btk1: 'Pay only for counted views', btk2: 'Views counted on day 7', btk3: 'Report links every clip', btk4: 'Your stop-list, your rules',
+    bCalcA: 'How many views you get for ', viewsWord: 'views', budget: 'Budget',
+    bCalcNoteA: 'Example at ', bCalcNoteB: ' per 1,000 views. We agree the exact rate in the brief.',
+    briefNeedTitle: 'What the brief needs',
+    bn1: 'What you promote and where people should go', bn2: 'Source: stream, podcast, music video, track', bn3: 'Campaign budget', bn4: 'Platforms: TikTok, Reels, Shorts', bn5: 'Stop-list: topics and words to avoid', bn6: 'Campaign deadline',
+    howTitle: 'How it works', reportTitle: 'What the report looks like', reportSample: 'Example',
+    rcClip: 'Clip', rcViews: 'Views', rcSum: 'Cost', rcTotal: 'Total',
+    reportNote: 'We send the report in chat: a link to every clip, its views on day 7 after posting and what was charged to your budget. You pay only for counted views.',
+    briefTpl: "Hi! I'd like to place an offer on Katch.\n\nBrand:\nWhat we promote:\nWhere to send people (link):\nSource:\nBudget:\nPlatforms:\nStop-list:\nDeadline:",
+    tabCabinet: 'Dashboard', brief: 'What to do', requirements: 'Requirements', source: 'Source',
+    openSource: 'Open source files', sourceLater: 'The manager will send the source in Telegram.',
+    takenTitle: 'Offer taken — it is in your dashboard', captionLabel: 'Caption for every clip',
+    captionNote: "Put this text in the caption of every clip for this offer. Without it the clip isn't counted: it's how we know the clip is yours.",
+    openCabinet: 'Open dashboard', takenToast: 'Offer added to your dashboard', viewBrief: 'View brief',
+    pasteLabel: 'Posted? Paste your clip links', pastePh: 'One link per line',
+    addClips: 'Submit for review', addedN: 'Clips submitted: {n}. Status: on review.',
+    earned: 'Earned', howPay: 'How you get paid',
+    noTakes: "Offers you take will show up here. Open an offer, read the brief and tap Take.",
+    back: 'Back', loading: 'Loading…',
+    hello: 'Hi, {name}', viaTg: 'signed in with Telegram',
+    eyebrow: 'The attention exchange',
+    heroTitle: 'Cut clips.\nGet paid\nper view.',
+    heroSub: 'Take an offer, post the clip with your Katch code, attach the link. We count the views and pay you.',
+    imClipper: "I'm a clipper", imBrand: "I'm a brand",
+    noSignup: 'No sign-up. Your Telegram account is your login.',
+    connect: 'Account', connectTitle: 'Where do you post?',
+    connectSub: 'We only need your handle. No passwords, no access to your account.',
+    platform: 'Platform', handle: 'Your handle', addAccount: 'Add account',
+    proveTitle: "Prove it's yours",
+    yourAccounts: 'Your accounts', addMore: 'Add another account', toOffers: 'Go to offers',
+    acc_pending: 'on review', acc_verified: 'verified', acc_rejected: 'rejected',
+    copy: 'Copy', copied: 'Copied',
+    tabOffers: 'Offers', tabClips: 'My clips', tabWallet: 'Wallet',
+    cat_all: 'All', cat_streams: 'Streams', cat_podcasts: 'Podcasts', cat_music: 'Music', cat_gaming: 'Gaming', cat_other: 'Other',
+    activeOffers: 'Open offers · {n}', noOffers: 'No open offers in this category right now.',
+    per1k: 'per 1K views', leftOf: '{left} left of {budget}', taken: 'Taken',
+    offer: 'Offer', rate: 'Rate', budgetLeft: 'Budget left', countedOn: 'Views counted',
+    day7: 'Day 7', afterPost: 'after posting', maxPerClip: 'Max per clip', noLimit: 'no cap',
+    platforms: 'Platforms', rules: 'Rules',
+    take: 'Take offer', openTaken: "You've taken this offer — open",
+    nextTitle: 'What to do next',
+    s1: 'Get the source', s1b: 'Open source folder', s1none: 'The manager will send the source in Telegram.',
+    s2: 'Cut vertical clips', s2b: '15–60 seconds, from this source only. As many clips as you like.',
+    s3: 'Post with this in the caption', s3b: "The code is required. Without it the clip isn't counted — it's how we know the clip is yours.",
+    yourLink: 'Your unique link', linkNote: 'Put it in your bio or description while the campaign runs. The brand sees the clicks.', clicks: 'clicks: {n}',
+    s4: 'Posted? Paste the clip link', linkPh: 'https://www.tiktok.com/@you/video/…',
+    submit: 'Submit for review', sent: 'Sent. Status: on review.',
+    s5: 'What happens next',
+    t1: 'Clip is "on review"', t2: 'On day 7 after posting we count the views', t3: '7 more days of hold in case of disputes', t4: 'Money lands in your wallet — withdraw to USDT or card',
+    clipsForOffer: 'Your clips for this offer',
+    st_review: 'On review · day {d} of 7', st_review_due: 'On review · counting views',
+    st_hold: 'Counted · hold until {date}', st_avail: 'Counted · ready to withdraw', st_out: 'Payout on its way', st_paid: 'Paid', st_rejected: 'Rejected',
+    views: '{n} views',
+    myOffers: 'Taken offers', myClips: 'Clips', noClips: 'No clips yet. Took an offer? Add the clip link.',
+    nClips: 'clips: {n}',
+    sOnReview: 'On review', sHold: 'In hold', sPaid: 'Paid',
+    available: 'Available', inHold: 'In hold', requested: 'Requested',
+    payTo: 'Pay out to', usdt: 'USDT · TON wallet', card: 'Bank card',
+    addrUsdt: 'TON wallet address', addrCard: 'Card number',
+    holdNote: 'Views are counted on day 7 after posting, then held 7 more days in case of disputes.',
+    withdraw: 'Withdraw {amount}', belowMin: 'Minimum withdrawal is {min}',
+    payoutDone: 'Payout requested.',
+    history: 'Payouts', ps_requested: 'requested', ps_sent: 'sent', ps_failed: 'failed',
+    inHoldList: 'Still in hold',
+    brand: 'For brands', brandEyebrow: 'Demand side',
+    brandTitle: 'Your footage, clipped and seen. You pay per counted view.',
+    b1: 'Message us', b1t: 'Tell us what you want to promote.',
+    b2: 'Short brief in chat', b2t: 'Rate, budget, platforms, rules, stop-list.',
+    b3: 'Offer goes live', b3t: 'Clippers post from their own accounts. We count views on day 7 after posting.',
+    b4: 'Report, pay for results', b4t: 'Every clip, its day-7 views and what was charged.',
+    placeOffer: 'Place an offer', opensChat: 'Opens a chat with @{m}',
+    brandMsg: "Hi! I'd like to place an offer on Katch.",
+    e_bad_url: "That doesn't look like a TikTok, Instagram or YouTube link.",
+    e_duplicate_clip: 'This clip has already been submitted.',
+    e_platform_not_allowed: "This platform isn't allowed for this offer.",
+    e_offer_closed: 'This offer is closed.',
+    e_bad_handle: 'Check the handle: letters, digits, dot, _ and - only.',
+    e_handle_taken: 'Another user has already linked this account.',
+    e_below_min: 'Amount is below the minimum withdrawal.',
+    e_bad_payout_details: 'Check your payout details.',
+    e_unauthorized: 'Open the app from the bot in Telegram.',
+    e_network: 'No connection. Try again.',
+    e_server_error: 'Something went wrong. Try again.'
+  }
+};
+
+// ================= ДОПОМІЖНЕ =================
+const CFG = Object.assign({ API_URL: '', MANAGER: 'katch_team', BRAND_CPM: 1.2, CLIPPER_RATE: 1 }, window.KATCH_CONFIG || {});
+const tg = window.Telegram && window.Telegram.WebApp;
+const inTg = !!(tg && tg.initData);
+const DEMO = !CFG.API_URL;
+const $app = document.getElementById('app');
+
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const usd = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (n) => Number(n || 0).toLocaleString('uk-UA');
+const DAY = 86400000;
+
+let S = {
+  lang: 'uk', user: null, accounts: [], offers: [], cat: 'all',
+  stack: [], screen: 'loading', p: {},
+  data: {}, err: '', busy: false, platform: 'tiktok', newAccount: null,
+  payMethod: 'usdt_ton', payAddr: '', takeMsg: {}, confirmCancel: null, calcP: 60, bCalcP: 57
+};
+
+function t(key, vars) {
+  let s = (T[S.lang] && T[S.lang][key]) || T.uk[key] || key;
+  if (vars) for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
+  return s;
+}
+const title = (o) => (S.lang === 'en' && o.title_en) ? o.title_en : o.title_uk;
+const field = (o, f) => (S.lang === 'en' && o[f + '_en']) ? o[f + '_en'] : (o[f + '_uk'] || '');
+const fmtDate = (iso) => new Date(iso).toLocaleDateString(S.lang === 'en' ? 'en-GB' : 'uk-UA', { day: 'numeric', month: 'short' });
+const platShort = (p) => ({ tiktok: 'TT', instagram: 'RL', youtube: 'YT' }[p] || p);
+const platName = (p) => ({ tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }[p] || p);
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { el.hidden = true; }, 2200);
+}
+function haptic(kind) { try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(kind || 'success'); } catch (e) {} }
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove();
+  }
+  haptic('success'); toast(t('copied'));
+}
+function openTg(url) { if (inTg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank'); }
+function openExt(url) { if (inTg && tg.openLink) tg.openLink(url); else window.open(url, '_blank'); }
+
+// ================= API =================
+class HttpApi {
+  async call(path, body) {
+    let res;
+    try {
+      res = await fetch(CFG.API_URL.replace(/\/$/, '') + path, {
+        method: body ? 'POST' : 'GET',
+        headers: Object.assign({ 'x-telegram-init-data': (tg && tg.initData) || '' }, body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined
+      });
+    } catch (e) { throw new Error('network'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'server_error');
+    return data;
+  }
+  me() { return this.call('/me', {}); }
+  settings(p) { return this.call('/settings', p); }
+  addAccount(platform, handle) { return this.call('/account', { platform, handle }); }
+  offers() { return this.call('/offers'); }
+  take(offer_id) { return this.call('/take', { offer_id }); }
+  getTake(id) { return this.call('/take/' + id); }
+  addClip(take_id, url) { return this.call('/clip', { take_id, url }); }
+  cancelTake(id) { return this.call('/take/' + id + '/cancel', {}); }
+  clips() { return this.call('/clips'); }
+  wallet() { return this.call('/wallet'); }
+  payout(method, address) { return this.call('/payout', { method, address }); }
+}
+
+// Демо: ті самі методи, дані в памʼяті
+class DemoApi {
+  constructor() {
+    const now = Date.now(), iso = (d) => new Date(now - d * DAY).toISOString();
+    this.user = { id: 1, username: 'demo', first_name: 'Олег', lang: 'uk', payout_method: null, payout_address: '' };
+    this.accounts = [];
+    this.offersArr = [
+      { id: 1, brand: 'Nightshift Live', title_uk: 'Нарізка IRL-стріму', title_en: 'IRL stream highlights', category: 'streams',
+        description_uk: '3-годинний запис стріму.', description_en: '3h VOD.',
+        brief_uk: 'Наріж найсмішніші й найгостріші моменти з 3-годинного IRL-стріму.\nСтрімер позначив таймкоди найкращих моментів у файлі timecodes.txt у папці з вихідниками — почни з них.\nКожен кліп — окремий момент, із сильним першим кадром і субтитрами.\nПублікуй зі свого акаунта, можна кілька кліпів на день.',
+        brief_en: 'Cut the funniest and sharpest moments from a 3-hour IRL stream.\nThe streamer marked the best timecodes in timecodes.txt in the source folder — start there.\nOne moment per clip, a strong first frame and subtitles.\nPost from your own account, several clips a day is fine.',
+        rules_uk: 'Код Katch у підписі — обовʼязково\n15–60 секунд, вертикально\nУвімкни позначку «Платне партнерство»\nНакручені перегляди = відхилення\nБез згадок інших брендів',
+        rules_en: 'Katch code in the caption — required\n15–60 seconds, vertical\nTurn on the paid-partnership label\nBotted views = rejected\nNo mentions of other brands',
+        source_url: 'https://drive.google.com/', target_url: 'https://example.com/',
+        rate_per_1k: 1.40, budget: 2000, max_per_clip: 300, platforms: ['tiktok', 'instagram', 'youtube'], status: 'live', spent: 760 },
+      { id: 2, brand: 'Northwave Records', title_uk: 'Новий сингл, хуки по 15 с', title_en: 'New single, 15s hooks', category: 'music',
+        description_uk: 'Кліп і студійна версія треку.', description_en: 'Music video and studio track.',
+        brief_uk: 'Зроби короткі відео під приспів нового синглу: нарізка з кліпу або твій тренд-формат.\nТрек має звучати з першої секунди.\nВикористовуй саме офіційний звук із TikTok або Reels, посилання — у папці.',
+        brief_en: 'Make short videos to the new single’s chorus: cuts from the music video or your own trend format.\nThe track must play from second one.\nUse the official sound on TikTok or Reels, link in the folder.',
+        rules_uk: 'Код Katch у підписі — обовʼязково\nТрек має звучати з першої секунди\nTikTok і Reels', rules_en: 'Katch code in the caption — required\nTrack audible from second one\nTikTok and Reels',
+        source_url: 'https://drive.google.com/', target_url: 'https://example.com/',
+        rate_per_1k: 1.10, budget: 1500, max_per_clip: null, platforms: ['tiktok', 'instagram'], status: 'live', spent: 1110 },
+      { id: 3, brand: 'Rozmova Pod', title_uk: 'Подкаст із фаундером, випуск 42', title_en: 'Founder podcast, ep. 42', category: 'podcasts',
+        description_uk: '1 год 20 хв відео.', description_en: '1h 20m video.',
+        brief_uk: 'Виріж 30–60-секундні фрагменти з порадами фаундера: одна думка — один кліп.\nДодай субтитри й заголовок на першому кадрі.',
+        brief_en: 'Cut 30–60 second segments with the founder’s advice: one idea per clip.\nAdd subtitles and a title on the first frame.',
+        rules_uk: 'Код Katch у підписі — обовʼязково\nСубтитри обовʼязкові', rules_en: 'Katch code in the caption — required\nSubtitles required',
+        source_url: '', target_url: 'https://example.com/',
+        rate_per_1k: 0.90, budget: 1000, max_per_clip: 100, platforms: ['tiktok', 'youtube'], status: 'live', spent: 120 }
+    ];
+    this.takes = [{ id: 't-demo', user_id: 1, offer_id: 2, code: 'k2hn8', created_at: iso(20) }];
+    this.clicks = { 't-demo': 37 };
+    this.clipsArr = [
+      { id: 'c1', take_id: 't-demo', offer_id: 2, url: 'https://tiktok.com/@demo/video/1', platform: 'tiktok', status: 'approved', views: 19090, payout: 21.00, counted_at: iso(10), hold_until: iso(3), payout_id: null, created_at: iso(17) },
+      { id: 'c2', take_id: 't-demo', offer_id: 2, url: 'https://instagram.com/reel/2', platform: 'instagram', status: 'approved', views: 30000, payout: 33.00, counted_at: iso(2), hold_until: new Date(now + 5 * DAY).toISOString(), payout_id: null, created_at: iso(9) },
+      { id: 'c3', take_id: 't-demo', offer_id: 2, url: 'https://tiktok.com/@demo/video/3', platform: 'tiktok', status: 'review', created_at: iso(3) },
+      { id: 'c4', take_id: 't-demo', offer_id: 2, url: 'https://instagram.com/reel/4', platform: 'instagram', status: 'rejected', reject_reason: 'Немає коду #k2hn8 у підписі', created_at: iso(8) }
+    ];
+    this.payoutsArr = [];
+  }
+  wait(v) { return new Promise((r) => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 120)); }
+  fail(code) { return new Promise((_, j) => setTimeout(() => j(new Error(code)), 120)); }
+  link(code) { return 'https://katch.app/k/' + code; }
+  me() { return this.wait({ user: this.user, accounts: [], is_new: true }); }
+  settings(p) { Object.assign(this.user, p); return this.wait({ user: this.user }); }
+  addAccount(platform, handle) {
+    handle = String(handle).trim().replace(/^@/, '').toLowerCase();
+    if (!/^[a-z0-9._-]{2,40}$/.test(handle)) return this.fail('bad_handle');
+    const a = { id: 'a' + Date.now(), platform, handle, bio_code: 'katch-' + Math.random().toString(36).slice(2, 7), status: 'pending' };
+    this.accounts.push(a); return this.wait({ account: a });
+  }
+  offers() {
+    const tk = (id) => { const x = this.takes.find((y) => y.offer_id === id); return x ? { id: x.id, code: x.code, link: this.link(x.code) } : null; };
+    return this.wait({ offers: this.offersArr.map((o) => Object.assign({}, o, { budget_left: o.budget - o.spent, take: tk(o.id) })) });
+  }
+  take(offer_id) {
+    let tk = this.takes.find((x) => x.offer_id === offer_id);
+    if (!tk) { tk = { id: 't' + Date.now(), user_id: 1, offer_id, code: 'k' + 'abcdefghjkmnpqrstuvwxyz23456789'.split('').sort(() => Math.random() - .5).slice(0, 4).join(''), created_at: new Date().toISOString() }; this.takes.unshift(tk); }
+    return this.wait({ take: Object.assign({}, tk, { link: this.link(tk.code) }), offer: this.offersArr.find((o) => o.id === offer_id) });
+  }
+  cancelTake(id) {
+    const tk = this.takes.find((x) => x.id === id);
+    this.clipsArr.forEach((c) => { if (c.take_id === id && !c.payout_id && (c.status === 'review' || c.status === 'approved')) { c.status = 'rejected'; c.payout = 0; c.reject_reason = 'Оффер скасовано'; } });
+    this.takes = this.takes.filter((x) => x !== tk);
+    return this.wait({ ok: true });
+  }
+  getTake(id) {
+    const tk = this.takes.find((x) => x.id === id);
+    return this.wait({ take: Object.assign({}, tk, { link: this.link(tk.code), clicks: this.clicks[id] || 0 }), offer: this.offersArr.find((o) => o.id === tk.offer_id), clips: this.clipsArr.filter((c) => c.take_id === id) });
+  }
+  addClip(take_id, url) {
+    let u; try { u = new URL(url.trim()); } catch (e) { return this.fail('bad_url'); }
+    const h = u.hostname.replace(/^www\.|^m\./, '');
+    const platform = /tiktok\.com$/.test(h) ? 'tiktok' : h === 'instagram.com' ? 'instagram' : (h === 'youtube.com' || h === 'youtu.be') ? 'youtube' : null;
+    if (!platform) return this.fail('bad_url');
+    if (this.clipsArr.some((c) => c.url === u.href)) return this.fail('duplicate_clip');
+    const tk = this.takes.find((x) => x.id === take_id);
+    const c = { id: 'c' + Date.now(), take_id, offer_id: tk.offer_id, url: u.href, platform, status: 'review', created_at: new Date().toISOString() };
+    this.clipsArr.unshift(c); return this.wait({ clip: c });
+  }
+  clips() {
+    const off = (id) => this.offersArr.find((o) => o.id === id);
+    return this.wait({
+      takes: this.takes.map((tk) => Object.assign({}, tk, { link: this.link(tk.code), clicks: this.clicks[tk.id] || 0, offers: off(tk.offer_id) })),
+      clips: this.clipsArr.map((c) => Object.assign({}, c, { offers: off(c.offer_id), paid: false }))
+    });
+  }
+  wallet() {
+    const now = new Date().toISOString();
+    const ap = this.clipsArr.filter((c) => c.status === 'approved' && !c.payout_id);
+    const free = ap.filter((c) => c.hold_until <= now), held = ap.filter((c) => c.hold_until > now);
+    const s = (a, k) => Math.round(a.reduce((x, r) => x + Number(r[k] || 0), 0) * 100) / 100;
+    return this.wait({
+      available: s(free, 'payout'), hold: s(held, 'payout'),
+      requested: s(this.payoutsArr.filter((p) => p.status === 'requested'), 'amount'), paid: 0, min_payout: 10,
+      payout_method: this.user.payout_method, payout_address: this.user.payout_address,
+      held: held.map((c) => ({ id: c.id, payout: c.payout, hold_until: c.hold_until, offer: this.offersArr.find((o) => o.id === c.offer_id) })),
+      payouts: this.payoutsArr
+    });
+  }
+  payout(method, address) {
+    const now = new Date().toISOString();
+    const free = this.clipsArr.filter((c) => c.status === 'approved' && !c.payout_id && c.hold_until <= now);
+    const amount = Math.round(free.reduce((x, c) => x + c.payout, 0) * 100) / 100;
+    if (!address || address.trim().length < 6) return this.fail('bad_payout_details');
+    if (amount < 10) return this.fail('below_min');
+    const p = { id: 'p' + Date.now(), amount, method, address, status: 'requested', created_at: now };
+    this.payoutsArr.unshift(p); free.forEach((c) => { c.payout_id = p.id; });
+    Object.assign(this.user, { payout_method: method, payout_address: address });
+    return this.wait({ payout: p });
+  }
+}
+
+const api = DEMO ? new DemoApi() : new HttpApi();
+
+// ================= НАВІГАЦІЯ =================
+// Перший екран — вибір ролі (кліпер чи бренд). З будь-якого екрана «Назад» веде аж до нього.
+function go(screen, p) {
+  if (S.screen && S.screen !== 'loading' && S.screen !== 'fatal') {
+    S.stack.push({ screen: S.screen, p: S.p });
+    if (S.stack.length > 40) S.stack.shift();
+  }
+  S.screen = screen; S.p = p || {}; S.err = ''; S.data = {};
+  try { window.scrollTo(0, 0); } catch (e) {}
+  load();
+}
+function back() {
+  const prev = S.stack.pop();
+  S.err = ''; S.data = {};
+  if (prev) { S.screen = prev.screen; S.p = prev.p; }
+  else if (S.screen !== 'start') { S.screen = 'start'; S.p = {}; }
+  else return;
+  try { window.scrollTo(0, 0); } catch (e) {}
+  load();
+}
+const canGoBack = () => S.screen !== 'start' && S.screen !== 'loading' && S.screen !== 'fatal';
+
+async function load() {
+  render();
+  try {
+    if (S.screen === 'home' || S.screen === 'feed' || S.screen === 'offer') S.data = await api.offers();
+    else if (S.screen === 'cabinet') S.data = await api.clips();
+    else if (S.screen === 'profile' || S.screen === 'wallet') {
+      S.data = await api.wallet();
+      S.payMethod = S.data.payout_method || S.payMethod;
+      S.payAddr = S.data.payout_address || S.payAddr;
+    }
+    S.data.ready = true;
+  } catch (e) { S.err = e.message; S.data.ready = true; }
+  render();
+}
+
+// ================= КАЛЬКУЛЯТОРИ =================
+const niceRound = (n) => { const m = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1)); return Math.round(n / m) * m; };
+const viewsAt = (p) => niceRound(Math.pow(10, 4 + 3 * p / 100));         // 10 тис. … 10 млн
+const budgetAt = (p) => niceRound(100 * Math.pow(200, p / 100));          // $100 … $20 000
+function fmtViews(n) {
+  const uk = S.lang === 'uk';
+  if (n >= 1e6) return String(Math.round(n / 1e5) / 10).replace('.', uk ? ',' : '.') + (uk ? ' млн' : 'M');
+  if (n >= 1e3) return Math.round(n / 1e3) + (uk ? ' тис.' : 'K');
+  return String(n);
+}
+const intFmt = (n) => Math.round(n).toLocaleString(S.lang === 'uk' ? 'uk-UA' : 'en-US');
+function clipperRate() {
+  const live = (S.data.offers || []).map((o) => Number(o.rate_per_1k)).filter((x) => x > 0);
+  return live.length ? Math.round(live.reduce((a, b) => a + b, 0) / live.length * 100) / 100 : Number(CFG.CLIPPER_RATE || 1);
+}
+const brandRate = () => Number(CFG.BRAND_CPM || 1.2);
+function updateCalcs() {
+  const v = document.getElementById('calcViews');
+  if (v) {
+    S.calcP = Number(v.value); v.style.setProperty('--p', S.calcP + '%');
+    const views = viewsAt(S.calcP);
+    document.getElementById('cvLabel').textContent = fmtViews(views);
+    document.getElementById('cvMoney').textContent = intFmt(views / 1000 * clipperRate());
+  }
+  const b = document.getElementById('calcBudget');
+  if (b) {
+    S.bCalcP = Number(b.value); b.style.setProperty('--p', S.bCalcP + '%');
+    const budget = budgetAt(S.bCalcP);
+    document.getElementById('bvBudget').textContent = usd(budget).replace('.00', '');
+    document.getElementById('bvViews').textContent = fmtViews(budget / brandRate() * 1000);
+  }
+}
+
+// ================= ЕКРАНИ =================
+function logoMark(size) {
+  const small = size <= 32;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48" fill="none" aria-hidden="true">' +
+    '<path d="M15 24 L40 7" stroke="#6e6e6e" stroke-width="' + (small ? 15 : 13) + '"/>' +
+    '<path d="M15 24 L40 41" stroke="#c6ff3d" stroke-width="' + (small ? 15 : 13) + '"/>' +
+    (small ? '<rect x="2" y="1" width="13" height="46" fill="#fafafa"/>' : '<rect x="4" y="3" width="11" height="42" fill="#fafafa"/>') + '</svg>';
+}
+const wordmark = (px) => '<span style="font-size:' + px + 'px;font-weight:800;letter-spacing:-0.04em;line-height:1">Katch</span>';
+const ic = (d) => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const icons = {
+  home: ic('<path d="M3 9l7-6 7 6v8H12v-5H8v5H3z"/>'),
+  feed: ic('<rect x="2.5" y="6" width="15" height="11" rx="2"/><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h3A1.5 1.5 0 0 1 13 4.5V6M2.5 11h15"/>'),
+  cabinet: ic('<rect x="6" y="2" width="8" height="16" rx="2"/><path d="M9 8l3 2-3 2z"/>'),
+  profile: ic('<circle cx="10" cy="6.5" r="3.5"/><path d="M3 18c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>'),
+  wallet: ic('<rect x="2" y="5" width="16" height="11" rx="2"/><path d="M13 10.5h2"/>'),
+  support: ic('<path d="M3 5h14v9H8l-4 3v-3H3z"/>'),
+  globe: ic('<circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2.2 2.3 2.2 12.7 0 15M10 2.5c-2.2 2.3-2.2 12.7 0 15"/>'),
+  bolt: ic('<path d="M11 2L4 11h5l-1 7 7-9h-5z"/>'),
+  ext: '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 15L15 5M8 5h7v7"/></svg>'
+};
+
+function top(titleText) {
+  const showBack = canGoBack() && !inTg; // у Telegram «Назад» — системна кнопка в шапці
+  const left = showBack
+    ? '<div class="pagehead"><button class="backpill" data-a="back">‹ ' + esc(t('back')) + '</button>' + (titleText ? '<h2>' + esc(titleText) + '</h2>' : '') + '</div>'
+    : '<button class="brandmark" data-a="home" aria-label="Katch">' + logoMark(28) + wordmark(20) + '</button>';
+  return '<div class="top">' + left +
+    '<div class="pillgroup"><button class="lang" data-a="lang" aria-label="Language">' + (S.lang === 'uk' ? 'UA' : 'EN') + '</button>' +
+    '<button data-a="go" data-v="profile" aria-label="' + esc(t('navProfile')) + '" style="width:40px">' + icons.profile.replace('<svg', '<svg width="20" height="20"') + '</button></div></div>' +
+    (DEMO ? '<div class="demo">' + esc(t('demo')) + '</div>' : '');
+}
+function tabs(active) {
+  const b = (k, label) => '<button data-a="go" data-v="' + k + '" class="' + (active === k ? 'on' : '') + '">' + icons[k] + esc(label) + '</button>';
+  return '<nav class="tabs"><div class="pill">' + b('home', t('navHome')) + b('feed', t('tabOffers')) + b('cabinet', t('tabCabinet')) + '</div>' +
+    '<button data-a="go" data-v="profile" class="circle' + (active === 'profile' ? ' on' : '') + '">' + icons.profile + esc(t('navProfile')) + '</button></nav>';
+}
+const errBox = () => S.err ? '<p class="err">' + esc(t('e_' + S.err)) + '</p>' : '';
+const loadingBox = () => '<div class="spin">' + esc(t('loading')) + '</div>';
+const codeBox = (value, big) => '<div class="codebox"><span class="v' + (big ? ' big' : '') + '"' + (big ? '' : ' style="font-size:14px"') + '>' + esc(value) + '</span><button class="btn sm" data-a="copy" data-v="' + esc(value) + '">' + esc(t('copy')) + '</button></div>';
+const captionFor = (code) => '#katch #' + code;
+const menuItem = (a, v, icon, title, sub, cls) => '<button class="menu-item' + (cls ? ' ' + cls : '') + '" data-a="' + a + '"' + (v ? ' data-v="' + esc(v) + '"' : '') + '><span class="ic">' + icon + '</span><span class="tx"><b>' + esc(title) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span><span class="chev">›</span></button>';
+
+function offerCard(o) {
+  const pct = o.budget > 0 ? Math.min(100, Math.round((o.budget - o.budget_left) / o.budget * 100)) : 0;
+  return '<button class="offer" data-a="offer" data-v="' + o.id + '"><div class="row"><div class="col"><span class="title">' + esc(title(o)) + '</span>' +
+    '<span class="small muted">' + esc(o.brand) + ' · ' + esc(t('cat_' + o.category)) + '</span></div>' +
+    '<div class="col" style="align-items:flex-end;flex-shrink:0"><span class="money" style="font-size:18px">' + usd(o.rate_per_1k) + '</span><span class="unit">' + esc(t('per1k')) + '</span></div></div>' +
+    '<div class="col" style="gap:6px;width:100%"><div class="track"><i style="width:' + pct + '%"></i></div>' +
+    '<div class="row mono" style="font-size:12px;color:var(--muted)"><span>' + esc(t('leftOf', { left: usd(o.budget_left), budget: usd(o.budget) })) + '</span>' +
+    '<span>' + (o.take ? '<span class="tag" style="color:var(--signal);border-color:var(--signal-line)">' + esc(t('taken')) + '</span> ' : '') + esc((o.platforms || []).map(platShort).join(' · ')) + '</span></div></div></button>';
+}
+
+function clipStatus(c) {
+  const now = Date.now();
+  if (c.status === 'rejected') return { text: t('st_rejected') + (c.reject_reason ? ' · ' + c.reject_reason : ''), color: 'var(--void)', bad: true };
+  if (c.status === 'review') {
+    const d = Math.floor((now - new Date(c.created_at).getTime()) / DAY);
+    return d >= 7 ? { text: t('st_review_due'), color: 'var(--muted)' } : { text: t('st_review', { d: Math.max(1, d) }), color: 'var(--muted)' };
+  }
+  if (c.paid) return { text: t('st_paid'), color: 'var(--signal)' };
+  if (c.payout_id) return { text: t('st_out'), color: 'var(--signal)' };
+  if (c.hold_until && new Date(c.hold_until).getTime() > now) return { text: t('st_hold', { date: fmtDate(c.hold_until) }), color: 'var(--signal-held)', held: true };
+  return { text: t('st_avail'), color: 'var(--signal)' };
+}
+function clipRow(c) {
+  const st = clipStatus(c);
+  const amount = c.status === 'approved'
+    ? '<span class="money' + (st.held ? ' held' : '') + '">' + usd(c.payout) + '</span><span class="unit">' + esc(t('views', { n: num(c.views) })) + '</span>'
+    : '<span class="mono muted">—</span>';
+  return '<div class="item"><div class="col" style="flex:1">' +
+    '<a href="#" data-a="ext" data-v="' + esc(c.url) + '" class="mono small" style="text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)">' + esc(platShort(c.platform)) + ' · ' + esc(c.url.replace(/^https?:\/\/(www\.)?/, '')) + '</a>' +
+    '<span class="status' + (st.bad ? ' bad' : '') + '"><i class="dot" style="background:' + st.color + '"></i>' + esc(st.text) + '</span>' +
+    '</div><div class="col" style="align-items:flex-end;flex-shrink:0">' + amount + '</div></div>';
+}
+const ticker = (keys) => { const items = keys.map((k) => '<span>' + esc(t(k)) + '</span>').join(''); return '<div class="ticker" aria-hidden="true"><div class="run">' + items + items + '</div></div>'; };
+
+const screens = {
+  loading: () => '<div class="spin">' + esc(t('loading')) + '</div>',
+
+  fatal: () => top() + '<div class="content"><div class="empty">' + esc(t('e_' + S.err)) + '</div></div>',
+
+
+  // Перший екран: вибір ролі
+  start: () => {
+    const u = S.user || {};
+    const name = u.first_name || u.username || '';
+    return top() + '<div class="content" style="min-height:calc(var(--tg-viewport-stable-height,100dvh) - 72px)">' +
+      '<div class="card tight" style="flex-direction:row;align-items:center">' +
+        '<div style="width:44px;height:44px;border-radius:999px;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted)">' + esc((name[0] || 'K').toUpperCase()) + '</div>' +
+        '<div class="col" style="flex:1"><span style="font-weight:600">' + esc(t('hello', { name: name })) + '</span><span class="mono small muted">' + (u.username ? '@' + esc(u.username) + ' · ' : '') + esc(t('viaTg')) + '</span></div></div>' +
+      '<div class="col" style="gap:14px;margin-top:20px"><span class="label lime">' + esc(t('eyebrow')) + '</span>' +
+        '<h1 class="hero" style="white-space:pre-line">' + esc(t('heroTitle')) + '</h1>' +
+        '<p class="muted" style="font-size:16px;line-height:24px">' + esc(t('heroSub')) + '</p></div>' +
+      '<div style="flex:1;min-height:24px"></div>' +
+      '<button class="btn ask split" data-a="go" data-v="home"><span>' + esc(t('imClipper')) + '</span><span class="mono small">ASK</span></button>' +
+      '<button class="btn split" data-a="go" data-v="brand"><span>' + esc(t('imBrand')) + '</span><span class="mono small muted">BID</span></button>' +
+      '<p class="small muted" style="text-align:center">' + esc(t('noSignup')) + '</p></div>';
+  },
+
+  // Головна кліпера: картка-обіцянка, калькулятор заробітку, топ-оффери, вхід для брендів
+  home: () => {
+    const views = viewsAt(S.calcP);
+    const rate = clipperRate();
+    const offers = (S.data.offers || []).slice(0, 2);
+    return top() + '<div class="content">' +
+      '<div class="card glow"><span class="label lime">' + esc(t('homeEyebrow')) + '</span>' +
+        '<h1 class="hero">' + esc(t('heroA')) + '<span class="hl">' + esc(t('heroB')) + '</span>.</h1>' +
+        '<p class="muted" style="font-size:16px;line-height:24px">' + esc(t('homeSub')) + '</p>' +
+        '<button class="btn limeline" data-a="go" data-v="feed">' + esc(t('startWork')) + '</button></div>' +
+      ticker(['tk1', 'tk2', 'tk3', 'tk4']) +
+      '<div class="card" style="gap:14px"><h1 style="font-size:24px;line-height:30px">' + esc(t('calcA')) + '<span class="lime" id="cvLabel">' + esc(fmtViews(views)) + '</span>' + esc(t('calcB')) + '</h1>' +
+        '<div class="calc-out"><span class="cur">$</span><span class="big" id="cvMoney">' + intFmt(views / 1000 * rate) + '</span></div>' +
+        '<div><input type="range" id="calcViews" min="0" max="100" step="1" value="' + S.calcP + '" style="--p:' + S.calcP + '%" aria-label="' + esc(t('calcAria')) + '">' +
+        '<div class="scale"><span>' + esc(fmtViews(1e4)) + '</span><span>' + esc(fmtViews(1e7)) + '</span></div></div>' +
+        '<p class="mono" style="font-size:12px;color:var(--muted)">' + esc(t('calcNoteA')) + '<span class="lime">' + usd(rate) + '</span>' + esc(t('calcNoteB')) + '</p></div>' +
+      (offers.length ? '<div class="row" style="align-items:center;margin-top:6px"><span class="label">' + esc(t('topOffers')) + '</span><button class="btn sm" data-a="go" data-v="feed">' + esc(t('allOffers')) + ' ›</button></div>' + offers.map(offerCard).join('') : '') +
+      '</div>' + tabs('home');
+  },
+
+  feed: () => {
+    if (!S.data.ready) return top(t('tabOffers')) + loadingBox() + tabs('feed');
+    const offers = S.data.offers || [];
+    const cats = ['all'].concat(['streams', 'podcasts', 'music', 'gaming', 'other'].filter((c) => offers.some((o) => o.category === c)));
+    const shown = offers.filter((o) => S.cat === 'all' || o.category === S.cat);
+    return top(t('tabOffers')) + '<div class="content">' +
+      '<h1>' + esc(t('tabOffers')) + '</h1>' +
+      '<div class="chips">' + cats.map((c) => '<button class="chip' + (S.cat === c ? ' on' : '') + '" data-a="cat" data-v="' + c + '">' + esc(t('cat_' + c)) + '</button>').join('') + '</div>' +
+      '<span class="label">' + esc(t('activeOffers', { n: shown.length })) + '</span>' + errBox() +
+      (shown.length ? shown.map(offerCard).join('') : '<div class="empty">' + esc(t('noOffers')) + '</div>') +
+      '</div>' + tabs('feed');
+  },
+
+  // Оффер: повне ТЗ одразу, кнопка «Взяти», після неї — підпис для кліпів
+  offer: () => {
+    if (!S.data.ready) return top(t('offer')) + loadingBox();
+    const o = (S.data.offers || []).find((x) => x.id === S.p.id);
+    if (!o) return top(t('offer')) + '<div class="content"><div class="empty">' + esc(t('e_offer_closed')) + '</div></div>';
+    const rules = field(o, 'rules').split('\n').filter(Boolean);
+    const brief = field(o, 'brief') || field(o, 'description');
+    return top(t('offer') + ' #' + o.id) + '<div class="content">' +
+      '<div class="card glow" style="padding:20px"><span class="label lime">' + esc(o.brand) + ' · ' + esc(t('cat_' + o.category)) + '</span>' +
+        '<h1 style="font-size:26px;line-height:30px">' + esc(title(o)) + '</h1></div>' +
+      '<div class="grid2">' +
+        '<div><span class="label">' + esc(t('rate')) + '</span><span class="money fig">' + usd(o.rate_per_1k) + '</span><span class="unit">' + esc(t('per1k')) + '</span></div>' +
+        '<div><span class="label">' + esc(t('budgetLeft')) + '</span><span class="fig">' + usd(o.budget_left) + '</span><span class="unit">/ ' + usd(o.budget) + '</span></div>' +
+        '<div><span class="label">' + esc(t('countedOn')) + '</span><span class="fig">' + esc(t('day7')) + '</span><span class="unit">' + esc(t('afterPost')) + '</span></div>' +
+        '<div><span class="label">' + esc(t('maxPerClip')) + '</span><span class="fig">' + (o.max_per_clip ? usd(o.max_per_clip) : '—') + '</span><span class="unit">' + (o.max_per_clip ? '' : esc(t('noLimit'))) + '</span></div>' +
+      '</div>' +
+      '<div class="card"><span class="label">' + esc(t('brief')) + '</span><p style="font-size:15px;line-height:23px;white-space:pre-line">' + esc(brief) + '</p></div>' +
+      (rules.length ? '<div class="card"><span class="label">' + esc(t('requirements')) + '</span><ul class="checks">' + rules.map((r) => '<li>' + esc(r) + '</li>').join('') + '</ul></div>' : '') +
+      '<div class="card"><span class="label">' + esc(t('platforms')) + '</span><span style="font-size:15px">' + esc((o.platforms || []).map(platName).join(', ')) + '</span>' +
+        '<span class="label" style="margin-top:4px">' + esc(t('source')) + '</span>' +
+        (o.source_url ? '<button class="btn split" style="min-height:48px;font-size:14px" data-a="ext" data-v="' + esc(o.source_url) + '"><span>' + esc(t('openSource')) + '</span>' + icons.ext + '</button>' : '<p class="small muted">' + esc(t('sourceLater')) + '</p>') +
+      '</div>' +
+      errBox() +
+      (o.take
+        ? '<div class="card glow" style="padding:20px"><span class="label lime">' + esc(t('takenTitle')) + '</span>' +
+            '<span class="small muted">' + esc(t('captionLabel')) + '</span>' + codeBox(captionFor(o.take.code), true) +
+            '<p class="small muted">' + esc(t('captionNote')) + '</p>' +
+            '<button class="btn ask" data-a="go" data-v="cabinet" data-focus="' + esc(o.take.id) + '">' + esc(t('openCabinet')) + '</button></div>'
+        : '<button class="btn ask" data-a="take" data-v="' + o.id + '"' + (S.busy ? ' disabled' : '') + '>' + esc(t('take')) + '</button>') +
+      '</div>';
+  },
+
+  // Кабінет: усі взяті оффери, у кожному — підпис, посилання на кліпи, статуси
+  cabinet: () => {
+    if (!S.data.ready) return top(t('tabCabinet')) + loadingBox() + tabs('cabinet');
+    const takes = (S.data.takes || []).slice();
+    const clips = S.data.clips || [];
+    if (S.p.focus) takes.sort((a, b) => (a.id === S.p.focus ? -1 : b.id === S.p.focus ? 1 : 0));
+    const now = Date.now();
+    const nReview = clips.filter((c) => c.status === 'review').length;
+    const held = clips.filter((c) => c.status === 'approved' && !c.payout_id && new Date(c.hold_until).getTime() > now).reduce((s, c) => s + Number(c.payout || 0), 0);
+    const earned = clips.filter((c) => c.status === 'approved').reduce((s, c) => s + Number(c.payout || 0), 0);
+    return top(t('tabCabinet')) + '<div class="content">' + '<h1>' + esc(t('tabCabinet')) + '</h1>' + errBox() +
+      '<div class="stats"><div><span class="label">' + esc(t('sOnReview')) + '</span><span class="fig">' + nReview + '</span></div>' +
+      '<div><span class="label">' + esc(t('sHold')) + '</span><span class="fig">' + usd(held) + '</span></div>' +
+      '<div><span class="label">' + esc(t('earned')) + '</span><span class="fig">' + usd(earned) + '</span></div></div>' +
+      (takes.length ? takes.map((tk) => {
+        const o = tk.offers || {};
+        const mine = clips.filter((c) => c.take_id === tk.id);
+        const msg = S.takeMsg[tk.id];
+        return '<div class="card' + (tk.id === S.p.focus ? ' glow' : '') + '" style="gap:14px">' +
+          '<div class="row"><div class="col"><span class="title">' + esc(title(o)) + '</span><span class="small muted">' + esc(o.brand || '') + ' · ' + esc(t('nClips', { n: mine.length })) + '</span></div>' +
+            '<div class="col" style="align-items:flex-end;flex-shrink:0"><span class="money" style="font-size:16px">' + usd(o.rate_per_1k) + '</span><span class="unit">' + esc(t('per1k')) + '</span></div></div>' +
+          '<div class="row" style="gap:8px">' +
+            '<button class="btn sm" style="flex:1" data-a="offer" data-v="' + esc(o.id) + '">' + esc(t('viewBrief')) + '</button>' +
+            (o.source_url ? '<button class="btn sm" style="flex:1" data-a="ext" data-v="' + esc(o.source_url) + '">' + esc(t('source')) + ' ' + icons.ext + '</button>' : '') +
+          '</div>' +
+          '<div class="col" style="gap:8px"><span class="label">' + esc(t('captionLabel')) + '</span>' + codeBox(captionFor(tk.code), true) + '<p class="small muted">' + esc(t('captionNote')) + '</p></div>' +
+          '<div class="col" style="gap:8px"><label class="label" for="urls-' + esc(tk.id) + '">' + esc(t('pasteLabel')) + '</label>' +
+            '<textarea id="urls-' + esc(tk.id) + '" class="input mono" rows="3" style="height:auto;padding:12px 14px;font-size:13px;line-height:19px;resize:vertical" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + esc(t('pastePh')) + '"></textarea>' +
+            (msg && msg.ok ? '<p class="ok">' + esc(t('addedN', { n: msg.ok })) + '</p>' : '') +
+            (msg && msg.errors.length ? msg.errors.map((e) => '<p class="err">' + esc(e.url) + ' — ' + esc(t('e_' + e.code)) + '</p>').join('') : '') +
+            '<button class="btn primary" data-a="addClips" data-v="' + esc(tk.id) + '"' + (S.busy ? ' disabled' : '') + '>' + esc(t('addClips')) + '</button></div>' +
+          (mine.length ? '<div class="list">' + mine.map(clipRow).join('') + '</div>' : '') +
+          (S.confirmCancel === tk.id
+            ? '<div class="card" style="border-color:rgba(255,92,77,.45);background:rgba(255,92,77,.06);padding:14px"><b>' + esc(t('cancelQ')) + '</b><p class="small muted">' + esc(t('cancelWarn')) + '</p>' +
+                '<div class="row" style="gap:8px"><button class="btn sm" style="flex:1;border-color:var(--void);color:var(--void)" data-a="cancelYes" data-v="' + esc(tk.id) + '"' + (S.busy ? ' disabled' : '') + '>' + esc(t('cancelYes')) + '</button>' +
+                '<button class="btn sm" style="flex:1" data-a="cancelNo">' + esc(t('cancelNo')) + '</button></div></div>'
+            : '<button class="link-btn" style="align-self:center;color:var(--void);font-size:14px" data-a="cancelAsk" data-v="' + esc(tk.id) + '">' + esc(t('cancelOffer')) + '</button>') +
+        '</div>';
+      }).join('') +
+      '<div class="card"><span class="label">' + esc(t('howPay')) + '</span><div class="timeline">' +
+        ['t1', 't2', 't3', 't4'].map((k, i) => '<div><b>' + (i + 1) + '</b><span>' + esc(t(k)) + '</span></div>').join('') + '</div></div>'
+      : '<div class="empty">' + esc(t('noTakes')) + '<button class="btn sm" data-a="go" data-v="feed">' + esc(t('toOffers')) + '</button></div>') +
+      (function () {
+        const orphan = clips.filter((c) => !takes.some((tk) => tk.id === c.take_id));
+        return orphan.length ? '<div class="col" style="gap:8px"><span class="label">' + esc(t('archive')) + '</span><div class="list">' +
+          orphan.map((c) => '<div style="padding:10px 14px 0;font-size:13px;font-weight:600">' + esc(c.offers ? title(c.offers) : '') + '</div>' + clipRow(c)).join('') + '</div></div>' : '';
+      })() +
+      '</div>' + tabs('cabinet');
+  },
+
+  // Профіль: баланс у вигляді картки + меню
+  profile: () => {
+    const u = S.user || {};
+    const w = S.data.ready ? S.data : {};
+    return top() + '<div class="content">' +
+      '<div class="cardwrap"><div class="bankcard" id="bankcard"><span class="bc-lines"></span><span class="bc-glow"></span><span class="wm">' + logoMark(190) + '</span>' +
+        '<div class="bc-top"><span class="bc-brand">' + logoMark(24) + wordmark(17) + '</span><span class="bc-right"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8.5 8.5a5 5 0 0 1 0 7"/><path d="M12 6a8.5 8.5 0 0 1 0 12"/><path d="M15.5 3.5a12 12 0 0 1 0 17"/></svg><span class="bc-role">CLIPPER</span></span></div>' +
+        '<span class="bc-chip" aria-hidden="true"></span>' +
+        '<span class="bc-num">•••• •••• •••• ' + esc(String(u.id || 0).slice(-4).padStart(4, '0')) + '</span>' +
+        '<div class="bc-bottom"><div class="col" style="gap:3px"><span class="bc-k">' + esc(t('cardHolder')) + '</span><span class="bc-name">' + esc(u.first_name || u.username || 'Katch') + '</span></div>' +
+        '<div class="col" style="gap:3px;align-items:flex-end"><span class="bc-k">' + esc(t('available')) + '</span><span class="bc-bal">' + (w.ready ? usd(w.available) : '…') + '</span></div></div></div></div>' +
+      (w.ready ? '<div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><span class="label">' + esc(t('inHold')) + '</span><span class="fig">' + usd(w.hold) + '</span></div><div><span class="label">' + esc(t('cardPaid')) + '</span><span class="fig">' + usd(w.paid) + '</span></div></div>' : '') + errBox() +
+      '<div class="menu">' +
+        menuItem('go', 'wallet', icons.wallet, t('mWithdraw'), t('mWithdrawSub')) +
+        menuItem('go', 'cabinet', icons.cabinet, t('tabCabinet'), t('mCabinetSub'), 'accent') +
+        menuItem('support', '', icons.support, t('mSupport'), t('mSupportSub')) +
+        menuItem('lang', '', icons.globe, t('mLang'), S.lang === 'uk' ? 'Українська · English' : 'English · Українська') +
+        menuItem('go', 'brand', icons.bolt, t('imBrand'), t('brandMenuSub'), 'hot') +
+      '</div></div>' + tabs('profile');
+  },
+
+  // Виведення коштів
+  wallet: () => {
+    if (!S.data.ready) return top(t('mWithdraw')) + loadingBox() + tabs('profile');
+    const w = S.data;
+    const total = (w.available || 0) + (w.hold || 0);
+    const pa = total > 0 ? Math.round((w.available || 0) / total * 100) : 0;
+    const can = (w.available || 0) >= (w.min_payout || 0) && (w.available || 0) > 0;
+    return top(t('mWithdraw')) + '<div class="content">' +
+      '<div class="card glow"><span class="label lime">' + esc(t('available')) + '</span>' +
+        '<span class="money" style="align-self:flex-start;font-size:40px;line-height:46px;letter-spacing:-.02em;padding:0 10px">' + usd(w.available) + '</span>' +
+        '<div class="col" style="gap:6px"><div class="track"><i style="width:' + pa + '%"></i><i class="held" style="width:' + (total > 0 ? 100 - pa : 0) + '%"></i></div>' +
+        '<div class="row mono" style="font-size:12px;color:var(--muted)"><span>' + esc(t('inHold')) + ' ' + usd(w.hold) + '</span>' + (w.requested ? '<span>' + esc(t('requested')) + ' ' + usd(w.requested) + '</span>' : '') + '</div></div></div>' +
+      '<div class="col" style="gap:8px"><span class="label">' + esc(t('payTo')) + '</span><div class="list">' +
+        '<label class="radio' + (S.payMethod === 'usdt_ton' ? ' on' : '') + '"><input type="radio" name="pm" data-a="pm" value="usdt_ton"' + (S.payMethod === 'usdt_ton' ? ' checked' : '') + '><span style="flex:1;font-weight:600">' + esc(t('usdt')) + '</span></label>' +
+        '<label class="radio' + (S.payMethod === 'card' ? ' on' : '') + '"><input type="radio" name="pm" data-a="pm" value="card"' + (S.payMethod === 'card' ? ' checked' : '') + '><span style="flex:1;font-weight:600">' + esc(t('card')) + '</span></label></div>' +
+        '<label for="addr" class="label" style="margin-top:8px">' + esc(S.payMethod === 'card' ? t('addrCard') : t('addrUsdt')) + '</label>' +
+        '<input id="addr" class="input mono" style="font-size:13px" autocomplete="off" spellcheck="false" value="' + esc(S.payAddr) + '"' + (S.payMethod === 'card' ? ' inputmode="numeric"' : '') + '></div>' +
+      '<p class="small muted">' + esc(t('holdNote')) + '</p>' + errBox() +
+      '<button class="btn ask" data-a="payout"' + (can && !S.busy ? '' : ' disabled') + '>' + esc(t('withdraw', { amount: usd(w.available) })) + '</button>' +
+      (!can ? '<p class="small muted" style="text-align:center;margin-top:-6px">' + esc(t('belowMin', { min: usd(w.min_payout) })) + '</p>' : '') +
+      ((w.held || []).length ? '<div class="col" style="gap:8px"><span class="label">' + esc(t('inHoldList')) + '</span><div class="list">' + w.held.map((h) =>
+        '<div class="item"><div class="col" style="flex:1"><span style="font-size:14px">' + esc(h.offer ? title(h.offer) : '') + '</span><span class="mono small muted">' + esc(t('st_hold', { date: fmtDate(h.hold_until) })) + '</span></div><span class="money held">' + usd(h.payout) + '</span></div>').join('') + '</div></div>' : '') +
+      ((w.payouts || []).length ? '<div class="col" style="gap:8px"><span class="label">' + esc(t('history')) + '</span><div class="list">' + w.payouts.map((p) =>
+        '<div class="item"><div class="col" style="flex:1"><span style="font-size:14px">' + esc(p.method === 'card' ? t('card') : t('usdt')) + '</span><span class="mono small muted">' + esc(t('ps_' + p.status)) + ' · ' + esc(fmtDate(p.created_at)) + '</span></div><span class="mono" style="font-weight:500">' + usd(p.amount) + '</span></div>').join('') + '</div></div>' : '') +
+      '</div>' + tabs('profile');
+  },
+
+  // Бренди: бриф, калькулятор переглядів, що потрібно, як працює, приклад звіту
+  brand: () => {
+    const budget = budgetAt(S.bCalcP), rate = brandRate();
+    const sample = [['tiktok.com/@cuts.ua/video/74…', 'TT', 48200], ['instagram.com/reel/DC2a…', 'RL', 21500], ['youtube.com/shorts/Zp4…', 'YT', 9800]];
+    const totalViews = sample.reduce((s, r) => s + r[2], 0);
+    const cost = (v) => usd(Math.round(v / 1000 * rate * 100) / 100);
+    return top(t('brand')) + '<div class="content">' +
+      '<div class="card glow"><span class="label lime">' + esc(t('brandEyebrow2')) + '</span>' +
+        '<h1 class="hero" style="font-size:34px;line-height:37px">' + esc(t('brandHeroA')) + '<span class="hl">' + esc(t('brandHeroB')) + '</span></h1>' +
+        '<p class="muted" style="font-size:16px;line-height:24px">' + esc(t('brandHeroSub')) + '</p>' +
+        '<button class="btn ask" data-a="chat">' + esc(t('writeBrief')) + '</button></div>' +
+      ticker(['btk1', 'btk2', 'btk3', 'btk4']) +
+      '<div class="card" style="gap:14px"><h1 style="font-size:24px;line-height:30px">' + esc(t('bCalcA')) + '<span class="lime" id="bvBudget">' + usd(budget).replace('.00', '') + '</span>?</h1>' +
+        '<div class="calc-out"><span class="big" id="bvViews">' + esc(fmtViews(budget / rate * 1000)) + '</span><span class="per">' + esc(t('viewsWord')) + '</span></div>' +
+        '<div><input type="range" id="calcBudget" min="0" max="100" step="1" value="' + S.bCalcP + '" style="--p:' + S.bCalcP + '%" aria-label="' + esc(t('budget')) + '">' +
+        '<div class="scale"><span>$100</span><span>$20 000</span></div></div>' +
+        '<p class="mono" style="font-size:12px;color:var(--muted)">' + esc(t('bCalcNoteA')) + '<span class="lime">' + usd(rate) + '</span>' + esc(t('bCalcNoteB')) + '</p></div>' +
+      '<div class="card"><span class="label">' + esc(t('briefNeedTitle')) + '</span><ul class="checks">' +
+        ['bn1', 'bn2', 'bn3', 'bn4', 'bn5', 'bn6'].map((k) => '<li>' + esc(t(k)) + '</li>').join('') + '</ul></div>' +
+      '<div class="card"><span class="label">' + esc(t('howTitle')) + '</span><div class="timeline" style="gap:6px">' +
+        [['b1', 'b1t'], ['b2', 'b2t'], ['b3', 'b3t'], ['b4', 'b4t']].map((x, i) => '<div><b>' + (i + 1) + '</b><span><span style="color:var(--ink);font-weight:600">' + esc(t(x[0])) + '.</span> ' + esc(t(x[1])) + '</span></div>').join('') + '</div></div>' +
+      '<div class="card"><div class="row" style="align-items:center"><span class="label">' + esc(t('reportTitle')) + '</span><span class="tag">' + esc(t('reportSample')) + '</span></div>' +
+        '<div class="scrollx"><table class="rtable"><thead><tr><th>' + esc(t('rcClip')) + '</th><th></th><th class="r">' + esc(t('rcViews')) + '</th><th class="r">' + esc(t('rcSum')) + '</th></tr></thead><tbody>' +
+        sample.map((r) => '<tr><td>' + esc(r[0]) + '</td><td class="muted">' + r[1] + '</td><td class="r">' + intFmt(r[2]) + '</td><td class="r">' + cost(r[2]) + '</td></tr>').join('') +
+        '</tbody><tfoot><tr><td>' + esc(t('rcTotal')) + '</td><td></td><td class="r">' + intFmt(totalViews) + '</td><td class="r"><span class="money">' + cost(totalViews) + '</span></td></tr></tfoot></table></div>' +
+        '<p class="small muted">' + esc(t('reportNote')) + '</p></div>' +
+      '<button class="btn ask split" data-a="chat"><span>' + esc(t('writeBrief')) + '</span>' + icons.ext + '</button>' +
+      '<p class="small muted" style="text-align:center">' + esc(t('opensChat', { m: CFG.MANAGER })) + '</p></div>';
+  }
+};
+
+function render() {
+  const s = screens[S.screen] || screens.loading;
+  document.documentElement.lang = S.lang;
+  $app.className = 'app' + (['home', 'feed', 'cabinet', 'profile', 'wallet'].includes(S.screen) ? ' has-tabs' : '');
+  $app.innerHTML = s();
+  if (inTg && tg.BackButton) { if (canGoBack()) tg.BackButton.show(); else tg.BackButton.hide(); }
+}
+
+// ================= ДІЇ =================
+$app.addEventListener('click', async (ev) => {
+  const el = ev.target.closest('[data-a]');
+  if (!el) return;
+  const a = el.dataset.a, v = el.dataset.v;
+  if (a === 'pm') return; // радіо обробляє change
+  if (el.tagName === 'A') ev.preventDefault();
+
+  if (a === 'back') return back();
+  if (a === 'home') { if (S.screen !== 'home') go('home'); return; }
+  if (a === 'go') { if (v === S.screen && !el.dataset.focus) return; return go(v, el.dataset.focus ? { focus: el.dataset.focus } : {}); }
+  if (a === 'copy') return copy(v);
+  if (a === 'ext') return openExt(v);
+  if (a === 'lang') {
+    S.lang = S.lang === 'uk' ? 'en' : 'uk'; render();
+    try { await api.settings({ lang: S.lang }); } catch (e) {}
+    return;
+  }
+  if (a === 'chat') return openTg('https://t.me/' + CFG.MANAGER + '?text=' + encodeURIComponent(t('briefTpl')));
+  if (a === 'support') return openTg('https://t.me/' + CFG.MANAGER + '?text=' + encodeURIComponent(t('supportMsg')));
+  if (a === 'cat') { S.cat = v; return render(); }
+  if (a === 'cancelAsk') { S.confirmCancel = v; return render(); }
+  if (a === 'cancelNo') { S.confirmCancel = null; return render(); }
+  if (a === 'cancelYes') {
+    S.busy = true; render();
+    try {
+      await api.cancelTake(v); haptic('warning'); toast(t('cancelled'));
+      S.confirmCancel = null; delete S.takeMsg[v];
+      S.data = await api.clips(); S.data.ready = true;
+    } catch (e) { S.err = e.message; haptic('error'); }
+    S.busy = false; return render();
+  }
+  if (a === 'offer') return go('offer', { id: Number(v) });
+
+  if (a === 'take') {
+    S.busy = true; S.err = ''; render();
+    try {
+      await api.take(Number(v)); haptic('success'); toast(t('takenToast'));
+      S.data = await api.offers(); S.data.ready = true;
+    } catch (e) { S.err = e.message; haptic('error'); }
+    S.busy = false; return render();
+  }
+
+  if (a === 'addClips') {
+    const box = document.getElementById('urls-' + v);
+    const urls = (box && box.value || '').split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
+    if (!urls.length) return;
+    S.busy = true; render();
+    const res = { ok: 0, errors: [] };
+    for (const u of [...new Set(urls)]) {
+      try { await api.addClip(v, u); res.ok++; }
+      catch (e) { res.errors.push({ url: u, code: e.message }); }
+    }
+    S.takeMsg[v] = res;
+    haptic(res.errors.length ? 'warning' : 'success');
+    try { S.data = await api.clips(); S.data.ready = true; } catch (e) { S.err = e.message; }
+    S.busy = false; render();
+    if (res.errors.length) { const b = document.getElementById('urls-' + v); if (b) b.value = res.errors.map((x) => x.url).join('\n'); }
+    return;
+  }
+
+  if (a === 'payout') {
+    S.payAddr = (document.getElementById('addr').value || '').trim();
+    S.busy = true; S.err = ''; render();
+    try {
+      await api.payout(S.payMethod, S.payAddr); haptic('success'); toast(t('payoutDone'));
+      S.data = await api.wallet(); S.data.ready = true;
+    } catch (e) { S.err = e.message; haptic('error'); }
+    S.busy = false; return render();
+  }
+});
+
+$app.addEventListener('pointermove', (ev) => {
+  const c = ev.target.closest && ev.target.closest('#bankcard');
+  if (!c || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  const r = c.getBoundingClientRect();
+  c.style.setProperty('--ry', ((ev.clientX - r.left) / r.width - 0.5) * 10 + 'deg');
+  c.style.setProperty('--rx', (0.5 - (ev.clientY - r.top) / r.height) * 8 + 'deg');
+});
+$app.addEventListener('pointerleave', (ev) => { const c = document.getElementById('bankcard'); if (c) { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); } }, true);
+$app.addEventListener('input', (ev) => {
+  if (ev.target && (ev.target.id === 'calcViews' || ev.target.id === 'calcBudget')) updateCalcs();
+});
+
+$app.addEventListener('change', (ev) => {
+  const el = ev.target;
+  if (el.dataset && el.dataset.a === 'pm') {
+    const addr = document.getElementById('addr');
+    if (addr) S.payAddr = addr.value;
+    S.payMethod = el.value; render();
+  }
+});
+
+// ================= СТАРТ =================
+(async function init() {
+  if (tg) {
+    try { tg.ready(); tg.expand(); } catch (e) {}
+    try { tg.setHeaderColor('#0b0b0c'); tg.setBackgroundColor('#0b0b0c'); } catch (e) {}
+    try { tg.BackButton.onClick(back); } catch (e) {}
+  }
+  if (!DEMO && !inTg) { S.err = 'unauthorized'; S.screen = 'fatal'; return render(); }
+  try {
+    const r = await api.me();
+    S.user = r.user;
+    S.lang = (r.user && r.user.lang) || 'uk';
+    S.screen = 'start'; load();
+  } catch (e) { S.err = e.message; S.screen = 'fatal'; render(); }
+})();
+})();
+</script>
+</body>
+</html>

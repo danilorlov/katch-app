@@ -5,7 +5,17 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
+// Токен бота: секрет BOT_TOKEN, а если его назвали иначе — любой секрет, похожий на токен Telegram-бота.
+function findBotToken(): string {
+  const direct = Deno.env.get("BOT_TOKEN");
+  if (direct) return direct.trim();
+  for (const [, v] of Object.entries(Deno.env.toObject())) {
+    if (/^\d{6,}:[A-Za-z0-9_-]{30,}$/.test((v ?? "").trim())) return v.trim();
+  }
+  console.error("Bot token not found in secrets");
+  return "";
+}
+const BOT_TOKEN = findBotToken();
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const MIN_PAYOUT = Number(Deno.env.get("MIN_PAYOUT") ?? "10");
 const MAX_AUTH_AGE = 60 * 60 * 24; // дані входу Telegram дійсні 24 години

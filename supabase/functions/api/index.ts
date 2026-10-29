@@ -163,20 +163,12 @@ function ensureWebhook() {
 
 const WELCOME = {
   uk: {
-    text:
-      "👋 Привіт! Це <b>Katch</b> — тут перегляди перетворюються на гроші 💸\n\n" +
-      "✂️ <b>Кліпер?</b> Бери оффери від брендів, нарізай відео, публікуй у TikTok, Reels або Shorts — і заробляй за кожну тисячу переглядів.\n\n" +
-      "📈 <b>Бренд?</b> Надішли бриф — кліпери рознесуть твій контент по соцмережах. Платиш тільки за зараховані перегляди.\n\n" +
-      "👇 Тисни кнопку і починай",
+    text: "👋 Привіт! Це <b>Katch</b> — біржа, де перегляди перетворюються на гроші 💸\n\n✂️ <b>ЯК ЦЕ ПРАЦЮЄ ДЛЯ КЛІПЕРІВ</b>\n1️⃣ Обираєш оффер і читаєш ТЗ\n2️⃣ Нарізаєш вертикальні відео\n3️⃣ Публікуєш у TikTok, Reels або Shorts зі своїм кодом Katch\n4️⃣ Додаєш посилання в кабінет\n5️⃣ На 7-й день рахуємо перегляди — гроші падають у гаманець, вивід на USDT або картку\n\n📈 <b>ЯК ЦЕ ПРАЦЮЄ ДЛЯ БРЕНДІВ</b>\n1️⃣ Відкриваєш Katch → «Я бренд» → «Написати бриф» — і пишеш нам у Telegram\n2️⃣ Погоджуємо ставку, бюджет і правила\n3️⃣ Запускаємо оффер — кліпери нарізають і публікують твій контент\n4️⃣ Платиш тільки за зараховані перегляди, звіт по кожному ролику надсилаємо в чат\n\n👇 Тисни кнопку, обирай, хто ти, і починай",
     button: "🚀 Відкрити Katch",
     other: "Усе відбувається в застосунку 👇",
   },
   en: {
-    text:
-      "👋 Hi! This is <b>Katch</b> — where views turn into money 💸\n\n" +
-      "✂️ <b>Clipper?</b> Take offers from brands, cut videos, post on TikTok, Reels or Shorts — and get paid for every thousand views.\n\n" +
-      "📈 <b>Brand?</b> Send a brief — clippers spread your content across social media. You pay only for counted views.\n\n" +
-      "👇 Tap the button to start",
+    text: "👋 Hi! This is <b>Katch</b> — the exchange where views turn into money 💸\n\n✂️ <b>HOW IT WORKS FOR CLIPPERS</b>\n1️⃣ Pick an offer and read the brief\n2️⃣ Cut vertical videos\n3️⃣ Post on TikTok, Reels or Shorts with your Katch code\n4️⃣ Add the links in your dashboard\n5️⃣ On day 7 we count the views — money lands in your wallet, withdraw to USDT or card\n\n📈 <b>HOW IT WORKS FOR BRANDS</b>\n1️⃣ Open Katch → «I'm a brand» → «Send a brief» — and message us on Telegram\n2️⃣ We agree the rate, budget and rules\n3️⃣ We launch the offer — clippers cut and post your content\n4️⃣ You pay only for counted views; we send a report on every clip in the chat\n\n👇 Tap the button, choose your side and start",
     button: "🚀 Open Katch",
     other: "Everything happens in the app 👇",
   },

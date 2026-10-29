@@ -741,12 +741,16 @@ const menuItem = (a, v, icon, title, sub, cls) => '<button class="menu-item' + (
 
 function offerCard(o) {
   const pct = o.budget > 0 ? Math.min(100, Math.round((o.budget - o.budget_left) / o.budget * 100)) : 0;
-  return '<button class="offer" data-a="offer" data-v="' + o.id + '"><div class="row"><div class="col"><span class="title">' + esc(title(o)) + '</span>' +
-    '<span class="small muted">' + esc(o.brand) + ' · ' + esc(t('cat_' + o.category)) + '</span></div>' +
-    '<div class="col" style="align-items:flex-end;flex-shrink:0"><span class="money" style="font-size:18px">' + usd(o.rate_per_1k) + '</span><span class="unit">' + esc(t('per1k')) + '</span></div></div>' +
-    '<div class="col" style="gap:6px;width:100%"><div class="track"><i style="width:' + pct + '%"></i></div>' +
-    '<div class="row mono" style="font-size:12px;color:var(--muted)"><span>' + esc(t('leftOf', { left: usd(o.budget_left), budget: usd(o.budget) })) + '</span>' +
-    '<span>' + (o.take ? '<span class="tag" style="color:var(--signal);border-color:var(--signal-line)">' + esc(t('taken')) + '</span> ' : '') + esc((o.platforms || []).map(platShort).join(' · ')) + '</span></div></div></button>';
+  const whole = (n) => usd(n).replace(/\.00$/, '');
+  return '<button class="offer" data-a="offer" data-v="' + o.id + '">' +
+    '<div class="row"><div class="col" style="flex:1"><span class="title">' + esc(title(o)) + '</span>' +
+      '<span class="small muted" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + esc(o.brand) + ' · ' + esc(t('cat_' + o.category)) +
+        (o.take ? '<span class="tag" style="color:var(--signal);border-color:var(--signal-line)">' + esc(t('taken')) + '</span>' : '') + '</span></div>' +
+      '<div class="col" style="align-items:flex-end;flex-shrink:0"><span class="money" style="font-size:18px">' + usd(o.rate_per_1k) + '</span><span class="unit">' + esc(t('per1k')) + '</span></div></div>' +
+    '<div class="col" style="gap:8px;width:100%"><div class="track"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="mono" style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;color:var(--muted)">' +
+        '<span style="min-width:0">' + esc(t('leftOf', { left: whole(o.budget_left), budget: whole(o.budget) })) + '</span>' +
+        '<span style="flex-shrink:0;white-space:nowrap">' + esc((o.platforms || []).map(platShort).join(' · ')) + '</span></div></div></button>';
 }
 
 function clipStatus(c) {

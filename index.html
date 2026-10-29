@@ -10,13 +10,9 @@
 <script src="config.js"></script>
 <script src="learn.js"></script>
 <script>
-// Тема до отрисовки, чтобы не мигало: сохраненный выбор → тема Telegram → тема системы
+// Тема до отрисовки, чтобы не мигало: по умолчанию темная, светлая — только если пользователь сам ее выбрал
 (function () {
   var th; try { th = localStorage.getItem('katch_theme'); } catch (e) {}
-  if (th !== 'light' && th !== 'dark') {
-    var w = window.Telegram && window.Telegram.WebApp;
-    th = (w && w.initData && w.colorScheme) || (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  }
   document.documentElement.setAttribute('data-theme', th === 'light' ? 'light' : 'dark');
 })();
 </script>
@@ -561,7 +557,6 @@ let S = {
 };
 
 // ================= ТЕМА =================
-function themeSaved() { try { return localStorage.getItem('katch_theme'); } catch (e) { return null; } }
 function setTheme(th, persist) {
   S.theme = th === 'light' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', S.theme);
@@ -1375,7 +1370,6 @@ $app.addEventListener('change', (ev) => {
 (async function init() {
   if (tg) {
     try { tg.ready(); tg.expand(); } catch (e) {}
-    try { tg.onEvent('themeChanged', () => { if (!themeSaved()) { setTheme(tg.colorScheme, false); render(); } }); } catch (e) {}
     try { tg.BackButton.onClick(back); } catch (e) {}
   }
   setTheme(S.theme, false);

@@ -6,7 +6,7 @@ window.KATCH_CONFIG = {
   API_URL: 'https://ervjsysouadjqdecmuyw.supabase.co/functions/v1/api',
 
   // Telegram-нік (без @), куди бренди пишуть бриф і куди веде «Підтримка»
-  MANAGER: 'katch_team',
+  MANAGER: 'dany_orlov',
 
   // Ставка для бренду в калькуляторі на сторінці брендів, $ за 1000 переглядів
   BRAND_CPM: 1.20,

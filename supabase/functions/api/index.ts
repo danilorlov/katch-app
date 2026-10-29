@@ -118,6 +118,85 @@ function parseClipUrl(raw: string): { url: string; platform: string } | null {
 const sum = (rows: { payout?: number | null; amount?: number | null }[], k: "payout" | "amount") =>
   Math.round(rows.reduce((s, r) => s + Number(r[k] ?? 0), 0) * 100) / 100;
 
+
+// ---------- Telegram-бот: привітання після «Старт» ----------
+const APP_URL = Deno.env.get("APP_URL") ?? "https://danilorlov.github.io/katch-app/";
+const WELCOME_IMG = APP_URL.replace(/\/?$/, "/") + "brand/katch-welcome.png";
+const WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/api/tg`;
+
+async function webhookSecret(): Promise<string> {
+  const h = await crypto.subtle.digest("SHA-256", enc.encode("katch-webhook:" + BOT_TOKEN));
+  return toHex(new Uint8Array(h)).slice(0, 48);
+}
+
+async function tg(method: string, payload: unknown) {
+  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return r.json().catch(() => ({}));
+}
+
+// Один раз на запуск сервера перевіряємо, що Telegram шле повідомлення боту сюди.
+let webhookChecked: Promise<void> | null = null;
+function ensureWebhook() {
+  if (webhookChecked || !BOT_TOKEN || !SUPABASE_URL) return;
+  webhookChecked = (async () => {
+    try {
+      const info = await tg("getWebhookInfo", {});
+      if (info?.result?.url !== WEBHOOK_URL) {
+        const res = await tg("setWebhook", {
+          url: WEBHOOK_URL,
+          secret_token: await webhookSecret(),
+          allowed_updates: ["message"],
+          drop_pending_updates: true,
+        });
+        console.log("setWebhook", JSON.stringify(res));
+      }
+    } catch (e) {
+      console.error("ensureWebhook failed", e);
+      webhookChecked = null;
+    }
+  })();
+}
+
+const WELCOME = {
+  uk: {
+    text:
+      "👋 Привіт! Це <b>Katch</b> — тут перегляди перетворюються на гроші 💸\n\n" +
+      "✂️ <b>Кліпер?</b> Бери оффери від брендів, нарізай відео, публікуй у TikTok, Reels або Shorts — і заробляй за кожну тисячу переглядів.\n\n" +
+      "📈 <b>Бренд?</b> Надішли бриф — кліпери рознесуть твій контент по соцмережах. Платиш тільки за зараховані перегляди.\n\n" +
+      "👇 Тисни кнопку і починай",
+    button: "🚀 Відкрити Katch",
+    other: "Усе відбувається в застосунку 👇",
+  },
+  en: {
+    text:
+      "👋 Hi! This is <b>Katch</b> — where views turn into money 💸\n\n" +
+      "✂️ <b>Clipper?</b> Take offers from brands, cut videos, post on TikTok, Reels or Shorts — and get paid for every thousand views.\n\n" +
+      "📈 <b>Brand?</b> Send a brief — clippers spread your content across social media. You pay only for counted views.\n\n" +
+      "👇 Tap the button to start",
+    button: "🚀 Open Katch",
+    other: "Everything happens in the app 👇",
+  },
+};
+
+// deno-lint-ignore no-explicit-any
+async function handleTelegramUpdate(update: any) {
+  const msg = update?.message;
+  if (!msg?.chat?.id || msg.chat.type !== "private") return;
+  const w = msg.from?.language_code === "en" ? WELCOME.en : WELCOME.uk;
+  const keyboard = { inline_keyboard: [[{ text: w.button, web_app: { url: APP_URL } }]] };
+  const text = String(msg.text ?? "");
+  if (text.startsWith("/start")) {
+    const r = await tg("sendPhoto", { chat_id: msg.chat.id, photo: WELCOME_IMG, caption: w.text, parse_mode: "HTML", reply_markup: keyboard });
+    if (!r?.ok) await tg("sendMessage", { chat_id: msg.chat.id, text: w.text, parse_mode: "HTML", reply_markup: keyboard });
+  } else {
+    await tg("sendMessage", { chat_id: msg.chat.id, text: w.other, reply_markup: keyboard });
+  }
+}
+
 // ---------- Обробник ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -125,6 +204,16 @@ Deno.serve(async (req) => {
   const path = new URL(req.url).pathname.replace(/^.*?\/api(?=\/|$)/, "") || "/";
 
   try {
+    ensureWebhook();
+
+    // Повідомлення боту від Telegram (перевіряємо секрет, щоб ніхто інший не міг сюди слати)
+    if (path === "/tg" && req.method === "POST") {
+      if (req.headers.get("x-telegram-bot-api-secret-token") !== (await webhookSecret())) return fail("forbidden", 403);
+      const update = await req.json().catch(() => null);
+      try { await handleTelegramUpdate(update); } catch (e) { console.error("tg update failed", e); }
+      return json({ ok: true });
+    }
+
     // Усе — лише для тих, хто зайшов через Telegram. Реєстрація = перший вхід.
     const tg = await verifyInitData(req.headers.get("x-telegram-init-data") ?? "", BOT_TOKEN);
     if (!tg) return fail("unauthorized", 401);

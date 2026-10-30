@@ -633,6 +633,7 @@ class HttpApi {
   clips() { return this.call('/clips'); }
   wallet() { return this.call('/wallet'); }
   payout(method, address) { return this.call('/payout', { method, address }); }
+  track(name) { return this.call('/track', { name }).catch(() => {}); }
 }
 
 // Демо: ті самі методи, дані в памʼяті
@@ -758,6 +759,9 @@ const api = DEMO ? new DemoApi() : new HttpApi();
 // • деталі (оффер, вивід коштів, сторінка бренду) відкриваються поверх і «Назад» повертає туди, звідки прийшов.
 const TABS = ['home', 'feed', 'cabinet', 'learn', 'profile'];
 function go(screen, p) {
+  // для дашборду: яку сторону людина обрала на першому екрані
+  if (S.screen === 'start' && screen === 'brand') api.track && api.track('role_brand');
+  else if (S.screen === 'start' && TABS.includes(screen)) api.track && api.track('role_clipper');
   if (TABS.includes(screen)) {
     S.stack = [{ screen: 'start', p: {} }];
   } else if (S.screen && S.screen !== 'loading' && S.screen !== 'fatal') {
@@ -1278,7 +1282,7 @@ $app.addEventListener('click', async (ev) => {
     try { await api.settings({ lang: S.lang }); } catch (e) {}
     return;
   }
-  if (a === 'chat') return openTg('https://t.me/' + CFG.MANAGER + '?text=' + encodeURIComponent(t('briefTpl')));
+  if (a === 'chat') { if (api.track) api.track('brief_click'); return openTg('https://t.me/' + CFG.MANAGER + '?text=' + encodeURIComponent(t('briefTpl'))); }
   if (a === 'support') return openTg('https://t.me/' + CFG.MANAGER + '?text=' + encodeURIComponent(t('supportMsg')));
   if (a === 'cat') { S.cat = v; return render(); }
   if (a === 'theme') { setTheme(S.theme === 'dark' ? 'light' : 'dark', true); haptic('success'); return render(); }

@@ -49,6 +49,16 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const fail = (error: string, status = 400) => json({ error }, status);
 
+// ---------- Аналітика ----------
+// Записуємо подію для дашборду. Ніколи не ламає основну дію: якщо таблиці events ще нема — просто мовчки пропускаємо.
+async function logEvent(user_id: number | null, name: string, meta?: Record<string, unknown>) {
+  try {
+    const r = await db.from("events").insert({ user_id, name, meta: meta ?? null });
+    if (r.error) console.error("event skipped", name, r.error.message);
+  } catch (e) { console.error("event skipped", name, e); }
+}
+
+
 // ---------- Перевірка входу через Telegram ----------
 const enc = new TextEncoder();
 async function hmac(key: Uint8Array, msg: string): Promise<Uint8Array> {
@@ -182,6 +192,8 @@ async function handleTelegramUpdate(update: any) {
   const keyboard = { inline_keyboard: [[{ text: w.button, web_app: { url: APP_URL } }]] };
   const text = String(msg.text ?? "");
   if (text.startsWith("/start")) {
+    const ref = text.split(" ")[1]?.slice(0, 64) || null; // t.me/katch_ua_bot?start=<мітка> — звідки прийшов
+    await logEvent(msg.from?.id ?? null, "bot_start", ref ? { ref } : undefined);
     const r = await tg("sendPhoto", { chat_id: msg.chat.id, photo: WELCOME_IMG, caption: w.text, parse_mode: "HTML", reply_markup: keyboard });
     if (!r?.ok) await tg("sendMessage", { chat_id: msg.chat.id, text: w.text, parse_mode: "HTML", reply_markup: keyboard });
   } else {
@@ -223,10 +235,24 @@ Deno.serve(async (req) => {
           .select().single();
         if (ins.error) throw ins.error;
         user = ins.data;
+        await logEvent(uid, "app_open", { first: true });
       } else if (existing.username !== (tg.username ?? null) || existing.first_name !== (tg.first_name ?? null)) {
         await db.from("users").update({ username: tg.username ?? null, first_name: tg.first_name ?? null }).eq("id", uid);
       }
+      if (existing) {
+        // Відвідування рахуємо не частіше ніж раз на 30 хв, щоб перезаходи не роздували цифри
+        const last = existing.last_seen_at ? Date.parse(existing.last_seen_at) : 0;
+        if (Date.now() - last > 30 * 60_000) await logEvent(uid, "app_open");
+      }
+      await db.from("users").update({ last_seen_at: new Date().toISOString() }).eq("id", uid);
       return json({ user, is_new: !existing });
+    }
+
+    // Що людина обрала в апці: сторону і чи натиснула «Написати бриф»
+    if (path === "/track" && req.method === "POST") {
+      const name = String(body.name ?? "");
+      if (["role_clipper", "role_brand", "brief_click"].includes(name)) await logEvent(uid, name);
+      return json({ ok: true });
     }
 
     if (path === "/settings" && req.method === "POST") {
